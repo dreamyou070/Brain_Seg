@@ -149,8 +149,8 @@ def main(args):
 
             # [5] backprop
             if args.do_attn_loss:
-                attn_loss = args.attn_loss_weight * normal_activator.generate_attention_loss()
-                loss += attn_loss.mean()
+                attn_loss = args.attn_loss_weight * normal_activator.generate_attention_loss().mean()
+                loss += attn_loss
                 loss_dict['attn_loss'] = attn_loss.item()
 
             if args.do_map_loss:
