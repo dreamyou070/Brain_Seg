@@ -149,16 +149,7 @@ def main(args):
 
             # [5] backprop
             if args.do_attn_loss:
-                normal_cls_loss, normal_trigger_loss, anomal_cls_loss, anomal_trigger_loss = normal_activator.generate_attention_loss()
-                if type(anomal_cls_loss) == float:
-                    attn_loss = args.normal_weight * normal_trigger_loss.mean()
-                else:
-                    attn_loss = args.normal_weight * normal_cls_loss.mean() + args.anomal_weight * anomal_cls_loss.mean()
-                if args.do_cls_train:
-                    if type(anomal_trigger_loss) == float:
-                        attn_loss = args.normal_weight * normal_cls_loss.mean()
-                    else:
-                        attn_loss += args.normal_weight * normal_cls_loss.mean() + args.anomal_weight * anomal_cls_loss.mean()
+                attn_loss = args.attn_loss_weight * normal_activator.generate_attention_loss()
                 loss += attn_loss
                 loss_dict['attn_loss'] = attn_loss.item()
 

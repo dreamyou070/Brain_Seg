@@ -93,7 +93,7 @@ class NormalActivator(nn.Module):
             attn_gt = attn_gt.unsqueeze(0)
             attn_gt = attn_gt.repeat(head, 1)
             total_score = torch.ones_like(attn_gt).to(attn.device)
-            attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2)
+            attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2) # head, pix_num
             self.attention_loss.append(attn_loss)
 
     def collect_anomal_map_loss(self, attn_score, gt):
@@ -178,21 +178,12 @@ class NormalActivator(nn.Module):
 
     def generate_attention_loss(self):
 
-        normal_cls_loss = torch.tensor(0.0, requires_grad=True)
-        normal_trigger_loss = torch.tensor(0.0, requires_grad=True)
-        if len(self.attention_loss['normal_cls_loss']) != 0:
-            normal_cls_loss = torch.stack(self.attention_loss['normal_cls_loss'], dim=0).mean(dim=0)
-            normal_trigger_loss = torch.stack(self.attention_loss['normal_trigger_loss'], dim=0).mean(dim=0)
 
-        anomal_cls_loss = torch.tensor(0.0, requires_grad=True)
-        anomal_trigger_loss = torch.tensor(0.0, requires_grad=True)
-        if len(self.attention_loss['anomal_cls_loss']) != 0:
-            anomal_cls_loss = torch.stack(self.attention_loss['anomal_cls_loss'], dim=0).mean(dim=0)
-            anomal_trigger_loss = torch.stack(self.attention_loss['anomal_trigger_loss'], dim=0).mean(dim=0)
+        if len(self.attention_loss) != 0:
+            attn_loss = torch.stack(self.attention_loss, dim=0).mean(dim=0) # [num, head9, pix_num] -> [head9, pix_num]
 
-        self.attention_loss = {'normal_cls_loss': [], 'normal_trigger_loss': [],
-                               'anomal_cls_loss': [], 'anomal_trigger_loss': []}
-        return normal_cls_loss, normal_trigger_loss, anomal_cls_loss, anomal_trigger_loss
+        self.attention_loss = []
+        return attn_loss
 
     def generate_anomal_map_loss(self):
         map_loss = torch.stack(self.anomal_map_loss, dim=0)
@@ -267,8 +258,7 @@ class NormalActivator(nn.Module):
         self.anomal_feat_list = []
         self.normal_feat_list = []
         # [2]
-        self.attention_loss = {'normal_cls_loss': [], 'normal_trigger_loss': [],
-                               'anomal_cls_loss': [], 'anomal_trigger_loss': []}
+        self.attention_loss = []
         self.trigger_score = []
         self.cls_score = []
         # [3]

@@ -1,6 +1,6 @@
 import os
 import torch
 
-gt = torch.randn((64,64))
-gt = gt.unsqueeze(dim = -1)
-print(gt.shape)
+attention_loss = [torch.randn(8,64), torch.randn(8,64)]
+attn_loss = torch.stack(attention_loss, dim=0)#.mean(dim=0)
+print(attn_loss.shape)
