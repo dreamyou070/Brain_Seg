@@ -14,7 +14,7 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --train_unet --train_text_encoder --start_epoch 0 --max_train_epochs 100 \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
- --data_path r"/home/dreamyou070/MyData/anomaly_detection/medical/brain/BraTS2020_Segmentation_multisegment" \
+ --data_path "/home/dreamyou070/MyData/anomaly_detection/medical/brain/BraTS2020_Segmentation_multisegment" \
  --trigger_word "${trigger_word}" \
  --obj_name "${obj_name}" \
  --do_map_loss \
