@@ -82,6 +82,7 @@ def inference(latent,
         local_query, local_key.transpose(-1, -2),
         beta=0, )
     attn_score = attention_scores.softmax(dim=-1)[:, :, :4]
+    print(f'attn_score (8, 64*64, 4) = {attn_score.shape')
     normal_map = attn_score[:,:,0].squeeze().mean() # pix_num
     necrotic_map = attn_score[:,:,1].squeeze().mean()
     ederma_map = attn_score[:, :, 2].squeeze().mean()
