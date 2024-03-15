@@ -47,6 +47,7 @@ def prev_step(model_output,
     return prev_sample
 
 def generate_pil(attn_map, res, h,w) :
+    print(f'attn_map (64*64) = {attn_map.shape}')
     attn_map = attn_map.unsqueeze(0).view(res, res)
     attn_map_pil = Image.fromarray((255 * attn_map).cpu().detach().numpy().astype(np.uint8)).resize((h,w))
     return attn_map_pil
