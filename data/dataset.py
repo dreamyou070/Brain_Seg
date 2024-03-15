@@ -147,7 +147,8 @@ class TrainDataset(Dataset):
 
         # [2] gt dir
         gt_path = self.gt_paths[idx] # 128,128,4
-        gt_arrg = np.loar(gt_path)
+        gt_arra = np.loar(gt_path)
+        torch.fraom_array
 
 
 
