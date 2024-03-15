@@ -6,7 +6,7 @@ import glob
 from PIL import Image
 from torchvision import transforms
 import cv2
-from data.perlin import rand_perlin_2d_np
+from tensorflow.keras.utils import to_categorical
 
 anomal_p = 0.03
 
@@ -101,8 +101,8 @@ class TrainDataset(Dataset):
                 gt_paths.append(os.path.join(gt_folder, f'{name}.npy'))
 
         self.resize_shape = resize_shape
-        self.caption = caption
         self.tokenizer = tokenizer
+        self.caption = caption
         self.transform = transforms.Compose([transforms.ToTensor(),
                                              transforms.Normalize([0.5],
                                                                   [0.5]),])
@@ -110,6 +110,7 @@ class TrainDataset(Dataset):
         self.gt_paths = gt_paths
         self.object_masks = object_masks
         self.latent_res = latent_res
+        categories = self.CLASSES
 
     def __len__(self):
         
@@ -146,20 +147,13 @@ class TrainDataset(Dataset):
         img = self.load_image(img_path, self.resize_shape[0], self.resize_shape[1],type='RGB')  # np.array,
 
         # [2] gt dir
-        gt_path = self.gt_paths[idx] # 128,128,4
-        gt_arra = np.loar(gt_path)
-        torch.fraom_array
+        gt_path = self.gt_paths[idx] # 128,128,1
+        gt_array = np.load(gt_path)  # categorise (128,128,1) -> (128,128,4)
+        gt_array = to_categorical(gt_array)
 
-
-
-        if self.tokenizer is not None :
-            input_ids, attention_mask = self.get_input_ids(self.caption) # input_ids = [77]
-        else :
-            input_ids = torch.tensor([0])
+        # [3] caption
+        input_ids, attention_mask = self.get_input_ids(self.caption)  # input_ids = [77]
 
         return {'image': self.transform(img),               # [3,512,512]
-                "gt": gt_torch,                             # [1, 64, 64]
-                'input_ids': input_ids.squeeze(0),
-                'is_ok' : is_ok,
-                'augment_img' : self.transform(anomal_pil),
-                'augment_mask' : anomal_mask_torch}
+                "gt": gt_array,
+                "input_ids" : input_ids}
