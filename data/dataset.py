@@ -87,18 +87,14 @@ class TrainDataset(Dataset):
 
         # [1] base image
         self.root_dir = root_dir
-        image_paths, gt_paths, object_masks = [], [],[]
-        folders = os.listdir(self.root_dir)
-        for folder in folders :
-            folder_dir = os.path.join(self.root_dir, folder)
-            rgb_folder = os.path.join(folder_dir, 'xray')
-            gt_folder = os.path.join(folder_dir, 'gt')
-            images = os.listdir(rgb_folder)
-            for image in images :
-                name, ext = os.path.splitext(image)
-                image_path = os.path.join(rgb_folder, image)
-                image_paths.append(image_path)
-                gt_paths.append(os.path.join(gt_folder, f'{name}.npy'))
+        image_paths, gt_paths = [], []
+        rgb_folder = os.path.join(self.root_dir, 'xray')
+        gt_folder = os.path.join(self.root_dir, 'gt')
+        images = os.listdir(rgb_folder)
+        for image in images :
+            name, ext = os.path.splitext(image)
+            image_paths.append(os.path.join(rgb_folder, image))
+            gt_paths.append(os.path.join(gt_folder, f'{name}.npy'))
 
         self.resize_shape = resize_shape
         self.tokenizer = tokenizer
@@ -108,7 +104,6 @@ class TrainDataset(Dataset):
                                                                   [0.5]),])
         self.image_paths = image_paths
         self.gt_paths = gt_paths
-        self.object_masks = object_masks
         self.latent_res = latent_res
         categories = self.CLASSES
 
