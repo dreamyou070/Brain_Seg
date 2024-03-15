@@ -82,12 +82,10 @@ def inference(latent,
         local_query, local_key.transpose(-1, -2),
         beta=0, )
     attn_score = attention_scores.softmax(dim=-1)[:, :, :4]
-    print(f'attn_score (8, 64*64, 4) = {attn_score.shape}')
-    normal_map = attn_score[:,:,0].squeeze().mean() # 8, pix_num
-    print(f'normal_map (pix_num) = {normal_map.shape}')
-    necrotic_map = attn_score[:,:,1].squeeze().mean()
-    ederma_map = attn_score[:, :, 2].squeeze().mean()
-    tumor_map = attn_score[:, :, 3].squeeze().mean()
+    normal_map = attn_score[:,:,0].squeeze().mean(dim=0) # 8, pix_num
+    necrotic_map = attn_score[:,:,1].squeeze().mean(dim=0)
+    ederma_map = attn_score[:, :, 2].squeeze().mean(dim=0)
+    tumor_map = attn_score[:, :, 3].squeeze().mean(dim=0)
 
     res = 64
     normal_pil = generate_pil(normal_map, res, org_h, org_w)
