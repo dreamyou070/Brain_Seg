@@ -22,11 +22,9 @@ def main(args):
 
     print(f'\n step 1. setting')
     output_dir = args.output_dir
-    print(f' *** output_dir : {output_dir}')
     os.makedirs(output_dir, exist_ok=True)
     args.logging_dir = os.path.join(output_dir, 'log')
     os.makedirs(args.logging_dir, exist_ok=True)
-
     record_save_dir = os.path.join(output_dir, 'record')
     os.makedirs(record_save_dir, exist_ok=True)
     with open(os.path.join(record_save_dir, 'config.json'), 'w') as f:
@@ -49,7 +47,8 @@ def main(args):
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
     trainable_params = network.prepare_optimizer_params(args.text_encoder_lr,
-                                                        args.unet_lr, args.learning_rate)
+                                                        args.unet_lr,
+                                                        args.learning_rate)
     if args.use_position_embedder:
         trainable_params.append({"params": position_embedder.parameters(), "lr": args.learning_rate})
     optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params)
@@ -94,7 +93,7 @@ def main(args):
     controller = AttentionStore()
     register_attention_control(unet, controller)
 
-    print(f'\n step 9. Training !')
+    print(f'\n step 10. Training !')
     progress_bar = tqdm(range(args.max_train_steps), smoothing=0,
                         disable=not accelerator.is_local_main_process, desc="steps")
     global_step = 0
@@ -125,14 +124,9 @@ def main(args):
             # ------------------------------------------------------------------------------------------------------------
             if args.do_normal_sample :
                 image = batch['image'].to(dtype=weight_dtype) # 1,3, 512,512
-                gt = batch['gt'].to(dtype=weight_dtype) # 1, 64,64
-                B,H,W, cat = gt.shape
-                for cat_index in cat:
-                    gt_map = gt[:, :, cat_index].squeeze()
-                    gt[:, :, cat_index] = torch.where(gt_map == 0, 0, 1)
+                gt_64 = batch['gt_64'].to(dtype=weight_dtype) # 1,64,64,cat_num
                 with torch.no_grad():
                     latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
-                    anomal_position_vector = gt.squeeze().flatten()
                 with torch.set_grad_enabled(True):
                     unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
                 query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
@@ -148,14 +142,11 @@ def main(args):
                 local_key = torch.cat(key_list, dim=-1).squeeze()  # head, 77, long_dim
                 # learnable weight ?
                 # local_query = [8, 64*64, 280] = [64*64, 2240]
-                attention_scores = torch.baddbmm(
-                    torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
-                                device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
-                local_attn = attention_scores.softmax(dim=-1)[:, :, :4]
-                normal_activator.collect_attention_scores(local_attn,
-                                                          gt,
-                                                          False)
-                normal_activator.collect_anomal_map_loss(local_attn, anomal_position_vector, )
+                attention_scores = torch.baddbmm(torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
+                                                             device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
+                attn = attention_scores.softmax(dim=-1)[:, :, :4]
+                normal_activator.collect_attention_scores(attn,gt_64,)
+                normal_activator.collect_anomal_map_loss(attn, gt_64)
 
             # [5] backprop
             if args.do_attn_loss:
@@ -217,31 +208,22 @@ def main(args):
                 p_save_dir = os.path.join(position_embedder_base_save_dir,
                                           f'position_embedder_{epoch + 1}.safetensors')
                 pe_model_save(accelerator.unwrap_model(position_embedder), save_dtype, p_save_dir)
-            if global_network is not None:
-                global_network_base_save_dir = os.path.join(args.output_dir, 'global_network')
-                os.makedirs(global_network_base_save_dir, exist_ok=True)
-                pe_model_save(accelerator.unwrap_model(global_network),
-                              save_dtype, os.path.join(global_network_base_save_dir, f'global_network_{epoch + 1}.safetensors'))
     accelerator.end_training()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
     # step 1. setting
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--output_dir', type=str, default='output')
+
     # step 2. dataset
     parser.add_argument('--data_path', type=str, default=r'../../../MyData/anomaly_detection/MVTec3D-AD')
     parser.add_argument('--obj_name', type=str, default='bottle')
-    parser.add_argument("--anomal_source_path", type=str)
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--trigger_word', type=str)
-    parser.add_argument('--kernel_size', type=int, default=5)
-    parser.add_argument("--anomal_only_on_object", action='store_true')
-    parser.add_argument("--reference_check", action='store_true')
     parser.add_argument("--latent_res", type=int, default=64)
-    parser.add_argument("--use_small_anomal", action='store_true')
-    parser.add_argument("--beta_scale_factor", type=float, default=0.8)
-    parser.add_argument("--anomal_p", type=float, default=0.04)
+
     # step 3. preparing accelerator
     parser.add_argument("--mixed_precision", type=str, default="no", choices=["no", "fp16", "bf16"], )
     parser.add_argument("--save_precision", type=str, default=None, choices=[None, "float", "fp16", "bf16"], )
@@ -253,6 +235,7 @@ if __name__ == "__main__":
                         help="do not use fp16/bf16 VAE in mixed precision (use float VAE) / mixed precision", )
     parser.add_argument("--position_embedding_layer", type=str)
     parser.add_argument("--d_dim", default=320, type=int)
+
     # step 4. model
     parser.add_argument('--pretrained_model_name_or_path', type=str, default='facebook/diffusion-dalle')
     parser.add_argument("--clip_skip", type=int, default=None,
@@ -266,16 +249,11 @@ if __name__ == "__main__":
     parser.add_argument("--network_dropout", type=float, default=None, )
     parser.add_argument("--network_args", type=str, default=None, nargs="*", )
     parser.add_argument("--dim_from_weights", action="store_true", )
-    parser.add_argument("--use_multi_position_embedder", action="store_true", )
-    parser.add_argument("--min_perlin_scale", type=int, default=0)
-    parser.add_argument("--max_perlin_scale", type=int, default=3)
-    parser.add_argument("--min_beta_scale", type=float, default=0.5)
-    parser.add_argument("--max_beta_scale", type=float, default=0.8)
 
     # step 5. optimizer
     parser.add_argument("--optimizer_type", type=str, default="AdamW",
-                        help="AdamW , AdamW8bit, PagedAdamW8bit, PagedAdamW32bit, Lion8bit, PagedLion8bit, Lion, SGDNesterov,"
-                             "SGDNesterov8bit, DAdaptation(DAdaptAdamPreprint), DAdaptAdaGrad, DAdaptAdam, DAdaptAdan, DAdaptAdanIP,"
+                  help="AdamW , AdamW8bit, PagedAdamW8bit, PagedAdamW32bit, Lion8bit, PagedLion8bit, Lion, SGDNesterov,"
+                "SGDNesterov8bit, DAdaptation(DAdaptAdamPreprint), DAdaptAdaGrad, DAdaptAdam, DAdaptAdan, DAdaptAdanIP,"
                              "DAdaptLion, DAdaptSGD, AdaFactor", )
     parser.add_argument("--use_8bit_adam", action="store_true",
                         help="use 8bit AdamW optimizer(requires bitsandbytes)", )
@@ -284,7 +262,6 @@ if __name__ == "__main__":
     parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm, 0 for no clipping")
     parser.add_argument("--optimizer_args", type=str, default=None, nargs="*",
                         help='additional arguments for optimizer (like "weight_decay=0.01 betas=0.9,0.999 ...") ', )
-    # lr
     parser.add_argument("--lr_scheduler_type", type=str, default="", help="custom scheduler module")
     parser.add_argument("--lr_scheduler_args", type=str, default=None, nargs="*",
                         help='additional arguments for scheduler (like "T_max=100")')
@@ -300,30 +277,13 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', type=float, default=1e-5)
     parser.add_argument('--train_unet', action='store_true')
     parser.add_argument('--train_text_encoder', action='store_true')
-    # step 8. training
-    parser.add_argument("--use_noise_scheduler", action='store_true')
-    parser.add_argument('--min_timestep', type=int, default=0)
-    parser.add_argument('--max_timestep', type=int, default=500)
+
+    # step 10. training
     parser.add_argument("--save_model_as", type=str, default="safetensors",
-                        choices=[None, "ckpt", "pt", "safetensors"],
-                        help="format to save the model (default is .safetensors)", )
+               choices=[None, "ckpt", "pt", "safetensors"], help="format to save the model (default is .safetensors)",)
     parser.add_argument("--start_epoch", type=int, default=0)
     parser.add_argument("--max_train_epochs", type=int, default=None, )
     parser.add_argument("--gradient_checkpointing", action="store_true", help="enable gradient checkpointing")
-    parser.add_argument("--dataset_ex", action='store_true')
-    parser.add_argument("--gen_batchwise_attn", action='store_true')
-    # [0]
-    parser.add_argument("--do_object_detection", action='store_true')
-    parser.add_argument("--do_normal_sample", action='store_true')
-    parser.add_argument("--do_anomal_sample", action='store_true')
-    parser.add_argument("--do_background_masked_sample", action='store_true')
-    parser.add_argument("--do_rotate_anomal_sample", action='store_true')
-    # [1]
-    parser.add_argument("--do_dist_loss", action='store_true')
-    parser.add_argument("--mahalanobis_only_object", action='store_true')
-    parser.add_argument("--mahalanobis_normalize", action='store_true')
-    parser.add_argument("--dist_loss_weight", type=float, default=1.0)
-    # [2]
     parser.add_argument("--do_attn_loss", action='store_true')
     parser.add_argument("--do_cls_train", action='store_true')
     parser.add_argument("--attn_loss_weight", type=float, default=1.0)
@@ -331,28 +291,17 @@ if __name__ == "__main__":
     parser.add_argument('--normal_weight', type=float, default=1.0)
     parser.add_argument("--trg_layer_list", type=arg_as_list, default=[])
     parser.add_argument("--original_normalized_score", action='store_true')
-    # [3]
     parser.add_argument("--do_map_loss", action='store_true')
     parser.add_argument("--use_focal_loss", action='store_true')
-    # [4]
     parser.add_argument("--test_noise_predicting_task_loss", action='store_true')
     parser.add_argument("--dist_loss_with_max", action='store_true')
-    # -----------------------------------------------------------------------------------------------------------------
-    parser.add_argument("--trg_beta", type=float)
     parser.add_argument("--on_desktop", action='store_true')
     parser.add_argument("--all_positional_embedder", action='store_true')
-    parser.add_argument("--all_self_cross_positional_embedder", action='store_true')
     parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--position_embedder_weights", type=str, default=None)
     parser.add_argument("--vae_pretrained_dir", type=str)
-    parser.add_argument("--do_self_aug", action='store_true')
-    parser.add_argument("--use_global_network", action='store_true')
     parser.add_argument("--local_hidden_states_globalize", action='store_true')
-    parser.add_argument("--do_black_and_white_noise", action='store_true')
-    parser.add_argument("--rgb_train", action='store_true')
     parser.add_argument("--normal_activating_test", action='store_true')
-    parser.add_argument("--unsupervised", action='store_true')
-    parser.add_argument("--anomal_position_source_path", type=str)
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)

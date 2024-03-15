@@ -76,6 +76,13 @@ class NormalActivator(nn.Module):
         gt = gt.squeeze()
         # [1] preprocessing
         seq_len = attn_score.shape[-1]
+        gt_len = gt.shape[-1]
+        if gt_len < seq_len:
+            base = torch.zeros((64, 64, 4))
+            for gt_idx in range(gt_len):
+                base[:, :, gt_idx] = gt[:, :, gt_idx]
+        gt = base
+
         for seq_idx in range(seq_len) :
             attn = attn_score[:, seq_idx].squeeze().flatten() # pix_num
             attn_gt = gt[:,:,seq_idx].squeeze().flatten()     # pix_num
@@ -83,7 +90,18 @@ class NormalActivator(nn.Module):
             attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2)
             self.attention_loss.append(attn_loss)
 
-    def collect_anomal_map_loss(self, attn_score, anomal_position_vector):
+    def collect_anomal_map_loss(self, attn_score, gt):
+
+        attn_score = attn_score.squeeze()
+        gt = gt.squeeze()
+        # [1] preprocessing
+        seq_len = attn_score.shape[-1]
+        gt_len = gt.shape[-1]
+        if gt_len < seq_len:
+            base = torch.zeros((64, 64, 4))
+            for gt_idx in range(gt_len):
+                base[:, :, gt_idx] = gt[:, :, gt_idx]
+        gt = base
 
         if self.use_focal_loss:
 
@@ -95,19 +113,17 @@ class NormalActivator(nn.Module):
                                        trigger_score.view(res, res).unsqueeze(0).generate_attention_loss(0)], 1)
 
             # [2] target
-            focal_loss_trg = anomal_position_vector.view(res, res).unsqueeze(0).unsqueeze(0)
+            focal_loss_trg = gt.view(res, res).unsqueeze(0).unsqueeze(0)
             map_loss = self.loss_focal(focal_loss_in,
                                        focal_loss_trg.to(dtype=trigger_score.dtype))
 
         else:
-            cls_score, trigger_score = attn_score.chunk(2, dim=-1)  # [head,pixel], [head,pixel]
-            cls_score, trigger_score = cls_score.squeeze(), trigger_score.squeeze()  # [head,pixel], [head,pixel]
-            cls_score, trigger_score = cls_score.mean(dim=0), trigger_score.mean(dim=0)  # pix_num
-            """ trigger score should be normal position """
-            trg_trigger_score = 1 - anomal_position_vector
-            map_loss = self.loss_l2(trigger_score.float(),
-                                    trg_trigger_score.float())
-        self.anomal_map_loss.append(map_loss)
+            for seq_idx in range(seq_len):
+                attn = attn_score[:, seq_idx].squeeze().flatten()  # pix_num
+                attn_gt = gt[:, :, seq_idx].squeeze().flatten()  # pix_num
+                map_loss = self.loss_l2(attn.float(), attn_gt.float())
+                self.anomal_map_loss.append(map_loss)
+
 
     def collect_noise_prediction_loss(self, noise_pred, noise, anomal_position_vector):
         b, c, h, w = noise_pred.shape

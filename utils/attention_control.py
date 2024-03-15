@@ -23,17 +23,9 @@ def register_attention_control(unet: nn.Module,controller: AttentionStore):
             """ cross self rechecking necessary """
 
             if noise_type is not None :
-                position_embedder, global_net = noise_type
-                if argument.use_position_embedder and not argument.use_global_network :
+                position_embedder = noise_type
+                if argument.use_position_embedder  :
                     hidden_states = position_embedder(hidden_states, layer_name)
-
-                if argument.use_position_embedder and argument.use_global_network :
-                    position_embedder, global_net = noise_type
-                    lcoal_hidden_states = position_embedder(hidden_states, layer_name)
-                    global_hidden_states = global_net(hidden_states, layer_name)
-                    if argument.local_hidden_states_globalize :
-                        global_hidden_states = global_net(lcoal_hidden_states, layer_name)
-                    hidden_states = lcoal_hidden_states + global_hidden_states
 
             query = self.to_q(hidden_states)
             context = context if context is not None else hidden_states

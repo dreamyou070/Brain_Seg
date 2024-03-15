@@ -46,12 +46,10 @@ def prev_step(model_output,
     prev_sample = alpha_prod_t_prev ** 0.5 * prev_original_sample + prev_sample_direction
     return prev_sample
 
-from diffusers import DDIMScheduler
-scheduler = DDIMScheduler(num_train_timesteps=1000,
-                                      beta_start=0.00085,
-                                      beta_end=0.012,
-                                      beta_schedule="scaled_linear")
-
+def generate_pil(attn_map, res, h,w) :
+    attn_map = attn_map.unsqueeze(0).view(res, res)
+    attn_map_pil = Image.fromarray((255 * attn_map).cpu().detach().numpy().astype(np.uint8)).resize((h,w))
+    return attn_map_pil
 def inference(latent,
               tokenizer, text_encoder, unet, controller, normal_activator, position_embedder,
               args, org_h, org_w, thred, global_network):
@@ -82,23 +80,19 @@ def inference(latent,
                     device=query.device),
         local_query, local_key.transpose(-1, -2),
         beta=0, )
-    attn_score = attention_scores.softmax(dim=-1)[:, :, :2]
+    attn_score = attention_scores.softmax(dim=-1)[:, :, :4]
+    normal_map = attn_score[:,:,0].squeeze().mean() # pix_num
+    necrotic_map = attn_score[:,:,1].squeeze().mean()
+    ederma_map = attn_score[:, :, 2].squeeze().mean()
+    tumor_map = attn_score[:, :, 3].squeeze().mean()
 
-    cls_score, trigger_score = attn_score.chunk(2, dim=-1)  # [head,pixel], [head,pixel]
-    cls_score, trigger_score = cls_score.squeeze(), trigger_score.squeeze()  # [head,pixel], [head,pixel]
-    cls_map, trigger_map = cls_score.mean(dim=0), trigger_score.mean(dim=0)  # pix_num
-    pix_num = trigger_map.shape[0]
-    res = int(pix_num ** 0.5)
-    cls_map = cls_map.unsqueeze(0).view(res, res)
-    cls_map_pil = Image.fromarray((255 * cls_map).cpu().detach().numpy().astype(np.uint8)).resize((org_h, org_w))
-    normal_map = torch.where(trigger_map > thred, 1, trigger_map).squeeze()
-    normal_map = normal_map.unsqueeze(0).view(res, res)
-    normal_map_pil = Image.fromarray(
-        normal_map.cpu().detach().numpy().astype(np.uint8) * 255).resize((org_h, org_w))
-    anomal_np = ((1 - normal_map) * 255).cpu().detach().numpy().astype(np.uint8)
-    anomaly_map_pil = Image.fromarray(anomal_np).resize((org_h, org_w))
+    res = 64
+    normal_pil = generate_pil(normal_map, res, org_h, org_w)
+    necrotic_pil = generate_pil(necrotic_map, res, org_h, org_w)
+    ederma_pil = generate_pil(ederma_map, res, org_h, org_w)
+    tumor_pil = generate_pil(tumor_map, res, org_h, org_w)
 
-    return cls_map_pil, normal_map_pil, anomaly_map_pil
+    return normal_pil, necrotic_pil, ederma_pil, tumor_pil
 
 
 
@@ -205,14 +199,9 @@ def main(args):
                 save_base_folder = os.path.join(check_base_folder, anomal_folder)
                 os.makedirs(save_base_folder, exist_ok=True)
 
-
                 anomal_folder_dir = os.path.join(test_img_folder, anomal_folder)
-                rgb_folder = os.path.join(anomal_folder_dir, 'rgb')
-                if args.test_with_xray :
-                    rgb_folder = os.path.join(anomal_folder_dir, 'xray')
+                rgb_folder = os.path.join(anomal_folder_dir, 'xray')
                 gt_folder = os.path.join(anomal_folder_dir, 'gt')
-                if args.object_crop:
-                    object_mask_folder = os.path.join(anomal_folder_dir, 'object_mask')
                 rgb_imgs = os.listdir(rgb_folder)
 
                 for rgb_img in rgb_imgs:
@@ -235,23 +224,24 @@ def main(args):
                                     latent = position_embedder.patch_embed(image.to(dtype=weight_dtype))
                                 else:
                                     latent = vae.encode(image.to(dtype=weight_dtype)).latent_dist.sample() * 0.18215
-                            cls_map_pil, normal_map_pil, anomaly_map_pil = inference(latent,
+                            normal_pil, necrotic_pil, ederma_pil, tumor_pil = inference(latent,
                                                                                      tokenizer, text_encoder, unet,
                                                                                      controller, normal_activator,
                                                                                      position_embedder,
                                                                                      args,
                                                                                      trg_h, trg_w,
                                                                                      thred, global_network)
-                            cls_map_pil.save(os.path.join(save_base_folder, f'{name}_cls.png'))
-                            normal_map_pil.save(os.path.join(save_base_folder, f'{name}_normal.png'))
-                            anomaly_map_pil.save( os.path.join(save_base_folder, f'{name}_anomal.png'))
-                            anomaly_map_pil.save(os.path.join(answer_anomal_folder, f'{name}.tiff'))
+
+                            normal_pil.save(os.path.join(save_base_folder, f'{name}_healthy.png'))
+                            necrotic_pil.save(os.path.join(save_base_folder, f'{name}_necrotic.png'))
+                            ederma_pil.save( os.path.join(save_base_folder, f'{name}_ederma.png'))
+                            tumor_pil.save(os.path.join(save_base_folder, f'{name}_tumor.png'))
                     controller.reset()
                     normal_activator.reset()
                     # [2] gt save
-                    if 'good' not in anomal_folder:
-                        gt_img_save_dir = os.path.join(save_base_folder, f'{name}_gt.png')
-                        Image.open(os.path.join(gt_folder, rgb_img)).resize((org_h, org_w)).save(gt_img_save_dir)
+                    #if 'good' not in anomal_folder:
+                    #    gt_img_save_dir = os.path.join(save_base_folder, f'{name}_gt.png')
+                    #    Image.open(os.path.join(gt_folder, rgb_img)).resize((org_h, org_w)).save(gt_img_save_dir)
                     # [3] original save
                     Image.open(rgb_img_dir).convert('RGB').save(os.path.join(save_base_folder, rgb_img))
         print(f'Model To Original')

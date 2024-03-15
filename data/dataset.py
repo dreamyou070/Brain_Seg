@@ -149,11 +149,29 @@ class TrainDataset(Dataset):
         # [2] gt dir
         gt_path = self.gt_paths[idx] # 128,128,1
         gt_array = np.load(gt_path)  # categorise (128,128,1) -> (128,128,4)
-        gt_array = torch.from_numpy(to_categorical(gt_array))
+
+        # (1) 64
+        gt_64 = np.array(Image.fromarray(gt_array.astype(np.uint8)).resize((64, 64))).astype(np.uint8)
+        gt_64 = torch.from_numpy(to_categorical(gt_64))  # [240,240,4]
+
+        # (2) 32
+        gt_32 = np.array(Image.fromarray(gt_array.astype(np.uint8)).resize((32, 32))).astype(np.uint8)
+        gt_32 = torch.from_numpy(to_categorical(gt_32) ) # [240,240,4]
+
+        # (3) 32
+        gt_16 = np.array(Image.fromarray(gt_array.astype(np.uint8)).resize((16, 16))).astype(np.uint8)
+        gt_16 = torch.from_numpy(to_categorical(gt_16) ) # [240,240,4]
+
+        # (4) 32
+        gt_8 = np.array(Image.fromarray(gt_array.astype(np.uint8)).resize((8, 8))).astype(np.uint8)
+        gt_8 = torch.from_numpy(to_categorical(gt_8))  # [240,240,4]
 
         # [3] caption
         input_ids, attention_mask = self.get_input_ids(self.caption)  # input_ids = [77]
 
         return {'image': self.transform(img),               # [3,512,512]
-                "gt": gt_array,
+                "gt_64" : gt_64,
+                "gt_32": gt_32,
+                "gt_16": gt_16,
+                "gt_8": gt_8,
                 "input_ids" : input_ids}
