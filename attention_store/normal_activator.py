@@ -81,7 +81,7 @@ class NormalActivator(nn.Module):
             base = torch.zeros((64, 64, 4))
             for gt_idx in range(gt_len):
                 base[:, :, gt_idx] = gt[:, :, gt_idx]
-        gt = base
+            gt = base
 
         for seq_idx in range(seq_len) :
             attn = attn_score[:, seq_idx].squeeze().flatten() # pix_num
