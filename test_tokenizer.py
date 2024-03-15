@@ -25,7 +25,7 @@ def main(args):
 
     from model.tokenizer import load_tokenizer
     tokenizer = load_tokenizer(args)
-    caption = "necrotic, edema, tumor"
+    caption = "core edema tumor"
     tokenizer_output = tokenizer(caption, padding="max_length", truncation=True,return_tensors="pt")
     input_ids = tokenizer_output.input_ids
     attention_mask = tokenizer_output.attention_mask

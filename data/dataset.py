@@ -149,7 +149,7 @@ class TrainDataset(Dataset):
         # [2] gt dir
         gt_path = self.gt_paths[idx] # 128,128,1
         gt_array = np.load(gt_path)  # categorise (128,128,1) -> (128,128,4)
-        gt_array = to_categorical(gt_array)
+        gt_array = torch.from_numpy(to_categorical(gt_array))
 
         # [3] caption
         input_ids, attention_mask = self.get_input_ids(self.caption)  # input_ids = [77]

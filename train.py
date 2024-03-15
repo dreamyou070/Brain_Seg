@@ -120,17 +120,16 @@ def main(args):
             loss = torch.tensor(0.0, dtype=weight_dtype, device=accelerator.device)
             loss_dict = {}
             with torch.set_grad_enabled(True):
+                # CLS, nec, edrma, tumor
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
-
             # ------------------------------------------------------------------------------------------------------------
             if args.do_normal_sample :
                 image = batch['image'].to(dtype=weight_dtype) # 1,3, 512,512
                 gt = batch['gt'].to(dtype=weight_dtype) # 1, 64,64
                 B,H,W, cat = gt.shape
                 for cat_index in cat:
-                    gt_map = gt[:, :, cat_index]
-                    import numpy as np
-                    gt_map = np.where(gt_map == 0, 0, 1)
+                    gt_map = gt[:, :, cat_index].squeeze()
+                    gt[:, :, cat_index] = torch.where(gt_map == 0, 0, 1)
                 with torch.no_grad():
                     latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
                     anomal_position_vector = gt.squeeze().flatten()
@@ -153,12 +152,9 @@ def main(args):
                     torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
                                 device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
                 local_attn = attention_scores.softmax(dim=-1)[:, :, :4]
-                if args.normal_activating_test :
-                    normal_activator.collect_attention_scores(local_attn, anomal_position_vector,  # anomal position
-                                                              1 - anomal_position_vector, False)
-                else :
-                    normal_activator.collect_attention_scores(local_attn, anomal_position_vector, # anomal position
-                                                              1 - anomal_position_vector, True)
+                normal_activator.collect_attention_scores(local_attn,
+                                                          gt,
+                                                          False)
                 normal_activator.collect_anomal_map_loss(local_attn, anomal_position_vector, )
 
             # [5] backprop
