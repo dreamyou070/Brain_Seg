@@ -73,9 +73,11 @@ class NormalActivator(nn.Module):
                                  gt,
                                  do_normal_activating=True):
         attn_score = attn_score.squeeze()
-        gt = gt.squeeze()
+        gt = gt.squeeze() # [res,res], [res,res,c]
         # [1] preprocessing
         seq_len = attn_score.shape[-1]
+        if gt.dim() == 2 :
+            gt = gt.unsqueeze(-1)
         gt_len = gt.shape[-1]
         if gt_len < seq_len:
             base = torch.zeros((64, 64, 4))
