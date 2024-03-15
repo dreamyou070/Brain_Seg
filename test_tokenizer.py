@@ -20,12 +20,15 @@ from model import call_model_package
 from attention_store.normal_activator import passing_normalize_argument
 from torch import nn
 
+# n = nectoric
+# e = edeme
+# t = enhancing tumor
 
 def main(args):
 
     from model.tokenizer import load_tokenizer
     tokenizer = load_tokenizer(args)
-    caption = "core edema tumor"
+    caption = "n, e, t"
     tokenizer_output = tokenizer(caption, padding="max_length", truncation=True,return_tensors="pt")
     input_ids = tokenizer_output.input_ids
     attention_mask = tokenizer_output.attention_mask
