@@ -82,10 +82,15 @@ class NormalActivator(nn.Module):
             for gt_idx in range(gt_len):
                 base[:, :, gt_idx] = gt[:, :, gt_idx]
             gt = base
-
+        # attn_score = [Head, pix_num, 4]
         for seq_idx in range(seq_len) :
-            attn = attn_score[:, seq_idx].squeeze().flatten() # pix_num
-            attn_gt = gt[:,:,seq_idx].squeeze().flatten()     # pix_num
+            attn = attn_score[:, :, seq_idx].squeeze() # [head,pix_num]
+            head = attn.shape[0]
+            print(f'attn (8, 64*64) = {attn.shape}')
+            attn_gt = gt[:,:,seq_idx].squeeze().flatten()       # pix_num
+            print(f'attn_gt (pix_num) = {attn_gt.shape} ')
+            attn_gt = attn_gt.unsqueeze(0)
+            attn_gt = attn_gt.repeat(head, 1)
             total_score = torch.ones_like(attn_gt)
             attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2)
             self.attention_loss.append(attn_loss)
