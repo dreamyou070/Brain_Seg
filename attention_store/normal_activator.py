@@ -74,6 +74,7 @@ class NormalActivator(nn.Module):
                                  do_normal_activating=True):
         attn_score = attn_score.squeeze()
         gt = gt.squeeze() # [res,res], [res,res,c]
+        device = gt.device
         # [1] preprocessing
         seq_len = attn_score.shape[-1]
         if gt.dim() == 2 :
@@ -83,7 +84,7 @@ class NormalActivator(nn.Module):
             base = torch.zeros((64, 64, 4))
             for gt_idx in range(gt_len):
                 base[:, :, gt_idx] = gt[:, :, gt_idx]
-            gt = base
+            gt = base.to(device)
         # attn_score = [Head, pix_num, 4]
         for seq_idx in range(seq_len) :
             attn = attn_score[:, :, seq_idx].squeeze() # [head,pix_num]
@@ -91,7 +92,7 @@ class NormalActivator(nn.Module):
             attn_gt = gt[:,:,seq_idx].squeeze().flatten()       # pix_num
             attn_gt = attn_gt.unsqueeze(0)
             attn_gt = attn_gt.repeat(head, 1)
-            total_score = torch.ones_like(attn_gt)
+            total_score = torch.ones_like(attn_gt).to(attn.device)
             attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2)
             self.attention_loss.append(attn_loss)
 
@@ -99,6 +100,7 @@ class NormalActivator(nn.Module):
 
         attn_score = attn_score.squeeze()
         gt = gt.squeeze()  # [res,res], [res,res,c]
+        device = gt.device
         # [1] preprocessing
         seq_len = attn_score.shape[-1]
         if gt.dim() == 2:
@@ -108,7 +110,7 @@ class NormalActivator(nn.Module):
             base = torch.zeros((64, 64, 4))
             for gt_idx in range(gt_len):
                 base[:, :, gt_idx] = gt[:, :, gt_idx]
-            gt = base
+            gt = base.to(device)
 
         if self.use_focal_loss:
 
