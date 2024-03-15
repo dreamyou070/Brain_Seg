@@ -173,7 +173,6 @@ def main(args):
             epoch_loss_total += current_loss
             avr_loss = epoch_loss_total / len(loss_list)
             loss_dict['avr_loss'] = avr_loss
-            loss_dict['sample'] = batch['is_ok'] # if 1 = normal sample, if 0 = anormal sample
             accelerator.backward(loss)
             optimizer.step()
             lr_scheduler.step()
