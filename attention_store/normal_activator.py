@@ -18,6 +18,13 @@ class NormalActivator(nn.Module):
         # [2]
         self.attention_loss =  []
 
+        self.attention_loss_dict = {}
+        self.attention_loss_dict['normal_cls_loss'] = []
+        self.attention_loss_dict['anomal_cls_loss'] = []
+        self.attention_loss_dict['normal_trigger_loss'] = []
+        self.attention_loss_dict['anomal_trigger_loss'] = []
+
+
         self.trigger_score = []
         self.cls_score = []
         # [3]
@@ -93,8 +100,48 @@ class NormalActivator(nn.Module):
             attn_gt = attn_gt.unsqueeze(0)
             attn_gt = attn_gt.repeat(head, 1)
             total_score = torch.ones_like(attn_gt).to(attn.device)
-            attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2) # head, pix_num
+            attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2) # head, pix_num -> attention should be big
             self.attention_loss.append(attn_loss)
+
+    def collect_attention_scores_binary(self,
+                                        attn_score,
+                                        anomal_position_vector,
+                                        do_normal_activating=True):
+        # [1] preprocessing
+        cls_score, trigger_score = attn_score.chunk(2, dim=-1)  # head, pix_num
+        cls_score, trigger_score = cls_score.squeeze(), trigger_score.squeeze()  # pix_num
+
+        cls_score, trigger_score = cls_score.mean(dim=0), trigger_score.mean(dim=0)  # pix_num
+        total_score = torch.ones_like(cls_score)
+
+        # [2]
+        normal_cls_score = cls_score * (1-anomal_position_vector)
+        normal_trigger_score = trigger_score * (1-anomal_position_vector)
+        anomal_cls_score = cls_score * anomal_position_vector
+        anomal_trigger_score = trigger_score * anomal_position_vector
+
+        # [3]
+        normal_cls_score = normal_cls_score / total_score
+        normal_trigger_score = normal_trigger_score / total_score
+        anomal_cls_score = anomal_cls_score / total_score
+        anomal_trigger_score = anomal_trigger_score / total_score
+
+        # [4]
+        normal_cls_loss = normal_cls_score ** 2
+        normal_trigger_loss = (1 - normal_trigger_score ** 2)  # normal cls score 이랑 같은 상황
+        anomal_cls_loss = (1 - anomal_cls_score ** 2)
+        anomal_trigger_loss = anomal_trigger_score ** 2
+
+        # [5]
+        if do_normal_activating:
+            # normal activating !
+            self.attention_loss_dict['normal_cls_loss'].append(normal_cls_loss.mean())
+            self.attention_loss_dict['normal_trigger_loss'].append(normal_trigger_loss.mean())
+
+        anomal_pixel_num = anomal_position_vector.sum()
+        if anomal_pixel_num > 0:
+            self.attention_loss_dict['anomal_cls_loss'].append(anomal_cls_loss.mean())
+            self.attention_loss_dict['anomal_trigger_loss'].append(anomal_trigger_loss.mean())
 
     def collect_anomal_map_loss(self, attn_score, gt):
 
@@ -134,6 +181,17 @@ class NormalActivator(nn.Module):
                 attn_gt = attn_gt.unsqueeze(0).repeat(head, 1)   # head, pix_num
                 map_loss = self.loss_l2(attn.float(), attn_gt.float())
                 self.anomal_map_loss.append(map_loss)
+
+    def collect_anomal_map_loss_binary(self, attn_score, anomal_position_vector):
+
+        cls_score, trigger_score = attn_score.chunk(2, dim=-1)  # [head,pixel], [head,pixel]
+        cls_score, trigger_score = cls_score.squeeze(), trigger_score.squeeze()  # [head,pixel], [head,pixel]
+        cls_score, trigger_score = cls_score.mean(dim=0), trigger_score.mean(dim=0)  # pix_num
+        """ trigger score should be normal position """
+        trg_trigger_score = 1 - anomal_position_vector
+        map_loss = self.loss_l2(trigger_score.float(),
+                                trg_trigger_score.float())
+        self.anomal_map_loss.append(map_loss)
 
 
     def collect_noise_prediction_loss(self, noise_pred, noise, anomal_position_vector):
@@ -259,6 +317,12 @@ class NormalActivator(nn.Module):
         self.normal_feat_list = []
         # [2]
         self.attention_loss = []
+        self.attention_loss_dict = {}
+        self.attention_loss_dict['normal_cls_loss'] = []
+        self.attention_loss_dict['anomal_cls_loss'] = []
+        self.attention_loss_dict['normal_trigger_loss'] = []
+        self.attention_loss_dict['anomal_trigger_loss'] = []
+
         self.trigger_score = []
         self.cls_score = []
         # [3]
