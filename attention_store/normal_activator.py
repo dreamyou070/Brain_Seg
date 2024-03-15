@@ -88,9 +88,7 @@ class NormalActivator(nn.Module):
         for seq_idx in range(seq_len) :
             attn = attn_score[:, :, seq_idx].squeeze() # [head,pix_num]
             head = attn.shape[0]
-            print(f'attn (8, 64*64) = {attn.shape}')
             attn_gt = gt[:,:,seq_idx].squeeze().flatten()       # pix_num
-            print(f'attn_gt (pix_num) = {attn_gt.shape} ')
             attn_gt = attn_gt.unsqueeze(0)
             attn_gt = attn_gt.repeat(head, 1)
             total_score = torch.ones_like(attn_gt)
@@ -100,15 +98,17 @@ class NormalActivator(nn.Module):
     def collect_anomal_map_loss(self, attn_score, gt):
 
         attn_score = attn_score.squeeze()
-        gt = gt.squeeze()
+        gt = gt.squeeze()  # [res,res], [res,res,c]
         # [1] preprocessing
         seq_len = attn_score.shape[-1]
+        if gt.dim() == 2:
+            gt = gt.unsqueeze(-1)
         gt_len = gt.shape[-1]
         if gt_len < seq_len:
             base = torch.zeros((64, 64, 4))
             for gt_idx in range(gt_len):
                 base[:, :, gt_idx] = gt[:, :, gt_idx]
-        gt = base
+            gt = base
 
         if self.use_focal_loss:
 
@@ -126,8 +126,10 @@ class NormalActivator(nn.Module):
 
         else:
             for seq_idx in range(seq_len):
-                attn = attn_score[:, seq_idx].squeeze().flatten()  # pix_num
+                attn = attn_score[:, :, seq_idx].squeeze()  # head, pix_num
+                head = attn.shape[0]
                 attn_gt = gt[:, :, seq_idx].squeeze().flatten()  # pix_num
+                attn_gt = attn_gt.unsqueeze(0).repeat(head, 1)   # head, pix_num
                 map_loss = self.loss_l2(attn.float(), attn_gt.float())
                 self.anomal_map_loss.append(map_loss)
 
