@@ -105,7 +105,6 @@ class TrainDataset(Dataset):
         self.image_paths = image_paths
         self.gt_paths = gt_paths
         self.latent_res = latent_res
-        categories = self.CLASSES
 
     def __len__(self):
         
