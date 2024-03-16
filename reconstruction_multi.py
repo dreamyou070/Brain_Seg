@@ -66,21 +66,17 @@ def inference(latent,
 
     query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
     controller.reset()
-    attn_list, origin_query_list, query_list, key_list = [], [], [], []
+    query_list, key_list = [], []
     for layer in args.trg_layer_list:
         query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-        origin_query_list.append(query)
         query_list.append(resize_query_features(query))  # head, pix_num, dim
         key_list.append(key_dict[layer][0])  # head, pix_num, dim
         # attn_list.append(attn_dict[layer][0])
     # [1] local
-    local_query = torch.cat(query_list, dim=-1)  # head, pix_num, long_dim
-    local_key = torch.cat(key_list, dim=-1).squeeze()  # head, 77, long_dim
-    attention_scores = torch.baddbmm(
-        torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
-                    device=query.device),
-        local_query, local_key.transpose(-1, -2),
-        beta=0, )
+    query = torch.cat(query_list, dim=-1)  # head, pix_num, long_dim
+    key = torch.cat(key_list, dim=-1).squeeze()  # head, 77, long_dim
+    attention_scores = torch.baddbmm(torch.empty(query.shape[0], query.shape[1], key.shape[1], dtype=query.dtype,
+                    device=query.device), query, key.transpose(-1, -2),beta=0, )
     attn_score = attention_scores.softmax(dim=-1)[:, :, :4]
     normal_map = attn_score[:,:,0].squeeze().mean(dim=0) # 8, pix_num
     necrotic_map = attn_score[:,:,1].squeeze().mean(dim=0)

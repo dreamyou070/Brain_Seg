@@ -11,7 +11,7 @@ from utils.accelerator_utils import prepare_accelerator
 from PIL import Image
 import numpy as np
 from attention_store.normal_activator import passing_normalize_argument
-from data.dataset import passing_mvtec_argument
+from data.dataset_multi import passing_mvtec_argument
 from safetensors.torch import load_file
 from diffusers import AutoencoderKL
 import json

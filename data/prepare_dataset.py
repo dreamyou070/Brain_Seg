@@ -1,5 +1,4 @@
 import os
-from data.dataset import TrainDataset
 import torch
 
 
@@ -12,11 +11,10 @@ def call_dataset(args) :
     if not args.on_desktop :
         from model.tokenizer import load_tokenizer
         tokenizer = load_tokenizer(args)
-    print(f'root_dir = {root_dir}')
 
-    if args.binary_test :
-        from data.dataset_binary import TrainDataset_Binary
-        dataset_class = TrainDataset_Binary
+    if args.train_single :
+        from data.dataset_single import TrainDataset_Single
+        dataset_class = TrainDataset_Single
         dataset = dataset_class(root_dir=root_dir,
                                 resize_shape=[512, 512],
                                 tokenizer=tokenizer,
@@ -24,6 +22,8 @@ def call_dataset(args) :
                                 latent_res=args.latent_res, )
 
     else :
+        root_dir = os.path.join(args.data_path, f'train_')
+        from data.dataset_multi import TrainDataset_Multi
         nectoric_word = ['necrotic']
         ederma_word = ['ederma']
         tumor_word = ['tumor', 'enhancing tumor']
@@ -39,13 +39,12 @@ def call_dataset(args) :
                 target = 't '
             caption += target
         caption = caption.strip()
-        # -------------------------------------------------------------------------------------------
-        dataset_class = TrainDataset
-        dataset = dataset_class(root_dir=root_dir,
-                                resize_shape=[512, 512],
-                                tokenizer=tokenizer,
-                                caption=caption,
-                                latent_res=args.latent_res,)
+        print(f'caption = {caption}')
+        dataset = TrainDataset_Multi(root_dir=root_dir,
+                                     resize_shape=[512, 512],
+                                     tokenizer=tokenizer,
+                                     caption=caption,
+                                     latent_res=args.latent_res,)
     dataloader = torch.utils.data.DataLoader(dataset,
                                              batch_size=args.batch_size,
                                              shuffle=True)

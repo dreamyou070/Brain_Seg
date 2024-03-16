@@ -123,17 +123,16 @@ def main(args):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             # ------------------------------------------------------------------------------------------------------------
             image = batch['image'].to(dtype=weight_dtype)           # 1,3, 512,512
-            gt_64 = batch['gt_64'].to(dtype=weight_dtype).squeeze() # 64,64,cat_num
+            gt = batch['gt'].to(dtype=weight_dtype).squeeze()       # 1,64*64, 4
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
                 unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
             query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
             controller.reset()
-            attn_list, origin_query_list, query_list, key_list = [], [], [], []
+            query_list, key_list = [], []
             for layer in args.trg_layer_list:
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                origin_query_list.append(query)  # head, pix_num, dim
                 query_list.append(resize_query_features(query))  # head, pix_num, dim
                 key_list.append(key_dict[layer][0])  # head, pix_num, dim
             # [1] local
@@ -144,12 +143,13 @@ def main(args):
             attention_scores = torch.baddbmm(torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
                                                          device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
             attn = attention_scores.softmax(dim=-1)[:, :, :4]
-            normal_activator.collect_attention_scores(attn, gt_64,)
-            normal_activator.collect_anomal_map_loss(attn, gt_64)
+            normal_activator.collect_attention_scores_multi(attn, gt)
+            normal_activator.collect_anomal_map_loss_multi(attn, gt)
 
             # [5] backprop
             if args.do_attn_loss:
-                attn_loss = args.attn_loss_weight * normal_activator.generate_attention_loss().mean()
+                attn_loss = normal_activator.generate_attention_loss_multi()
+                attn_loss = args.attn_loss_weight * attn_loss.mean()
                 loss += attn_loss
                 loss_dict['attn_loss'] = attn_loss.item()
 
@@ -157,11 +157,6 @@ def main(args):
                 map_loss = normal_activator.generate_anomal_map_loss()
                 loss += map_loss
                 loss_dict['map_loss'] = map_loss.item()
-
-            if args.test_noise_predicting_task_loss:
-                noise_pred_loss = normal_activator.generate_noise_prediction_loss()
-                loss += noise_pred_loss
-                loss_dict['noise_pred_loss'] = noise_pred_loss.item()
 
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
@@ -291,10 +286,11 @@ if __name__ == "__main__":
     parser.add_argument("--vae_pretrained_dir", type=str)
     parser.add_argument("--local_hidden_states_globalize", action='store_true')
     parser.add_argument("--normal_activating_test", action='store_true')
+    parser.add_argument("--train_single", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
     passing_normalize_argument(args)
-    from data.dataset import passing_mvtec_argument
+    from data.dataset_multi import passing_mvtec_argument
     passing_mvtec_argument(args)
     main(args)
