@@ -98,7 +98,7 @@ class NormalActivator(nn.Module):
         for seq_idx in range(seq_len):
             attn = attn_score[:, :, seq_idx].squeeze()  # head, pix_num
             head = attn.shape[0]
-            attn_gt = gt[:, :, seq_idx].squeeze().flatten()  # pix_num
+            attn_gt = gt[:, seq_idx].squeeze().flatten()  # pix_num
             attn_gt = attn_gt.unsqueeze(0).repeat(head, 1)   # head, pix_num
             map_loss = self.loss_l2(attn.float(), attn_gt.float())
             self.anomal_map_loss.append(map_loss)
