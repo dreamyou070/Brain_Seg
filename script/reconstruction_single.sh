@@ -7,7 +7,7 @@ benchmark="BraTS2020_Segmentation_multisegment"
 trigger_word='brain'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="2_binary_segmentation_BraTS2020"
+file_name="4_binary_segmentation_BraTS2020_text_truncate"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --main_process_port $port_number ../reconstruction_single.py \
@@ -21,4 +21,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --trg_layer_list "['up_blocks_1_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
- --threds [0.4,0.3,0.6,] --use_position_embedder --test_with_xray
+ --threds [0.5] --use_position_embedder --test_with_xray

@@ -100,7 +100,7 @@ class NormalActivator(nn.Module):
             head = attn.shape[0]
             attn_gt = gt[:, seq_idx].squeeze().flatten()  # pix_num
             attn_gt = attn_gt.unsqueeze(0).repeat(head, 1)   # head, pix_num
-            map_loss = self.loss_l2(attn.float(), attn_gt.float())
+            map_loss = self.loss_l2(attn.float(), attn_gt.float()).mean(dim=0)
             self.anomal_map_loss.append(map_loss)
 
     def collect_anomal_map_loss_single(self, attn_score, anomal_position_vector):
