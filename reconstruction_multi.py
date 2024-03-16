@@ -198,6 +198,7 @@ def main(args):
 
                     name, ext = os.path.splitext(rgb_img)
                     rgb_img_dir = os.path.join(rgb_folder, rgb_img)
+
                     pil_img = Image.open(rgb_img_dir).convert('RGB')
                     org_h, org_w = pil_img.size
 
@@ -223,6 +224,8 @@ def main(args):
                                                                                      thred, global_network)
 
                             anomal_pil.save(os.path.join(save_base_folder, f'{name}_anomal.png'))
+                    gt_dir = os.path.join(gt_folder, rgb_img)
+                    Image.open(gt_dir).convert('RGB').save(os.path.join(save_base_folder, f'{name}_gt.png'))
                     controller.reset()
                     normal_activator.reset()
                     # [2] gt save
