@@ -61,7 +61,7 @@ def inference(latent,
     # [2] unet
     if args.use_position_embedder :
         unet(latent, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
-             noise_type=[position_embedder,global_network])
+             noise_type=position_embedder)
     else:
         unet(latent, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, )
 
