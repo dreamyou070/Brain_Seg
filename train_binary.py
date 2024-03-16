@@ -291,6 +291,8 @@ if __name__ == "__main__":
     parser.add_argument("--vae_pretrained_dir", type=str)
     parser.add_argument("--local_hidden_states_globalize", action='store_true')
     parser.add_argument("--normal_activating_test", action='store_true')
+    parser.add_argument("--binary_test", action='store_true')
+
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
