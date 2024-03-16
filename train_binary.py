@@ -46,9 +46,7 @@ def main(args):
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
-    trainable_params = network.prepare_optimizer_params(args.text_encoder_lr,
-                                                        args.unet_lr,
-                                                        args.learning_rate)
+    trainable_params = network.prepare_optimizer_params(args.text_encoder_lr, args.unet_lr, args.learning_rate)
     if args.use_position_embedder:
         trainable_params.append({"params": position_embedder.parameters(), "lr": args.learning_rate})
     optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params)
@@ -62,7 +60,7 @@ def main(args):
     normal_activator = NormalActivator(loss_focal, loss_l2, args.use_focal_loss)
 
     print(f'\n step 8. model to device')
-    if args.use_position_embedder  :
+    if args.use_position_embedder :
         unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, position_embedder = accelerator.prepare(
             unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, position_embedder)
     else:
@@ -119,11 +117,10 @@ def main(args):
             loss = torch.tensor(0.0, dtype=weight_dtype, device=accelerator.device)
             loss_dict = {}
             with torch.set_grad_enabled(True):
-                # CLS, nec, edrma, tumor
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             # ------------------------------------------------------------------------------------------------------------
-            image = batch['image'].to(dtype=weight_dtype)           # 1,3, 512,512
-            anomal_position_vector = batch['gt'].to(dtype=weight_dtype).squeeze().flatten()    # 64,64 -> anomal_position
+            image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
+            anomal_position_vector = batch['gt'].to(dtype=weight_dtype).squeeze().flatten() # 64,64 -> anomal_position
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
@@ -141,7 +138,7 @@ def main(args):
             local_key = torch.cat(key_list, dim=-1).squeeze()  # head, 77, long_dim
             attention_scores = torch.baddbmm(torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
                                                          device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
-            attn = attention_scores.softmax(dim=-1)[:, :, :2]
+            attn = attention_scores.softmax(dim=-1)[:, :, :2] # 8, 64*64, 2
             normal_activator.collect_attention_scores_binary(attn, anomal_position_vector)
             normal_activator.collect_anomal_map_loss_binary(attn, anomal_position_vector)
 

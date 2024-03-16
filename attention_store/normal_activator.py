@@ -109,13 +109,12 @@ class NormalActivator(nn.Module):
                                         do_normal_activating=True):
         # [1] preprocessing
         cls_score, trigger_score = attn_score.chunk(2, dim=-1)  # head, pix_num
-        cls_score, trigger_score = cls_score.squeeze(), trigger_score.squeeze()  # pix_num
-
+        cls_score, trigger_score = cls_score.squeeze(), trigger_score.squeeze()  # head, pix_num
         cls_score, trigger_score = cls_score.mean(dim=0), trigger_score.mean(dim=0)  # pix_num
         total_score = torch.ones_like(cls_score)
 
         # [2]
-        normal_cls_score = cls_score * (1-anomal_position_vector) # ------------------------------------
+        normal_cls_score = cls_score * (1-anomal_position_vector)           # ------------------------------------
         normal_trigger_score = trigger_score * (1-anomal_position_vector)
         anomal_cls_score = cls_score * anomal_position_vector
         anomal_trigger_score = trigger_score * anomal_position_vector
@@ -133,13 +132,12 @@ class NormalActivator(nn.Module):
         anomal_trigger_loss = anomal_trigger_score ** 2
 
         # [5]
-        if do_normal_activating:
-            # normal activating !
+        if do_normal_activating :
             self.attention_loss_dict['normal_cls_loss'].append(normal_cls_loss.mean())
             self.attention_loss_dict['normal_trigger_loss'].append(normal_trigger_loss.mean())
 
         anomal_pixel_num = anomal_position_vector.sum()
-        if anomal_pixel_num > 0:
+        if anomal_pixel_num > 0 : # if anomal sample ....
             self.attention_loss_dict['anomal_cls_loss'].append(anomal_cls_loss.mean())
             self.attention_loss_dict['anomal_trigger_loss'].append(anomal_trigger_loss.mean())
 
@@ -190,7 +188,7 @@ class NormalActivator(nn.Module):
         """ trigger score should be normal position """
         trg_trigger_score = 1 - anomal_position_vector
         map_loss = self.loss_l2(trigger_score.float(),
-                                trg_trigger_score.float())
+                                trg_trigger_score.float()) # be normal
         self.anomal_map_loss.append(map_loss)
 
 
@@ -257,8 +255,10 @@ class NormalActivator(nn.Module):
             anomal_cls_loss = torch.stack(self.attention_loss_dict['anomal_cls_loss'], dim=0).mean(dim=0)
             anomal_trigger_loss = torch.stack(self.attention_loss_dict['anomal_trigger_loss'], dim=0).mean(dim=0)
 
-        self.attention_loss_dict = {'normal_cls_loss': [], 'normal_trigger_loss': [],
-                               'anomal_cls_loss': [], 'anomal_trigger_loss': []}
+        self.attention_loss_dict = {'normal_cls_loss': [],
+                                    'normal_trigger_loss': [],
+                                    'anomal_cls_loss': [],
+                                    'anomal_trigger_loss': []}
         return normal_cls_loss, normal_trigger_loss, anomal_cls_loss, anomal_trigger_loss
 
 
