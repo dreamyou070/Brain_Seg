@@ -40,7 +40,8 @@ class NormalActivator(nn.Module):
                                        gt,         # [64*64, 4]
                                        do_normal_activating=True):
         attn_score = attn_score.squeeze()
-        gt = gt.squeeze() # [res,res], [res,res,c]
+        gt = gt.squeeze() # [pix_num, c]
+
         seq_len = attn_score.shape[-1]
         for seq_idx in range(seq_len) :
             attn = attn_score[:, :, seq_idx].squeeze()     # [head,pix_num]

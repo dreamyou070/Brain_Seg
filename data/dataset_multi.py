@@ -140,7 +140,7 @@ class TrainDataset_Multi(Dataset):
         img = self.load_image(img_path, self.resize_shape[0], self.resize_shape[1],type='RGB')  # np.array,
 
         # [2] gt dir
-        gt_path = self.gt_paths[idx] # 128,128,1
+        gt_path = self.gt_paths[idx]
         gt_array = np.load(gt_path)  # (240,240)
 
         # (1) 64
@@ -156,5 +156,5 @@ class TrainDataset_Multi(Dataset):
         input_ids, attention_mask = self.get_input_ids(self.caption)  # input_ids = [77]
 
         return {'image': self.transform(img), # [3,512,512]
-                "gt" : gt,                    # [64*64, 4]
+                "gt" : base_gt,                    # [64*64, 4]
                 "input_ids" : input_ids}
