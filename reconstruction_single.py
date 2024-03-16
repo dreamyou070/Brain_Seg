@@ -210,7 +210,7 @@ def main(args):
                 rgb_folder = os.path.join(anomal_folder_dir, 'rgb')
                 if args.test_with_xray :
                     rgb_folder = os.path.join(anomal_folder_dir, 'xray')
-                gt_folder = os.path.join(anomal_folder_dir, 'gt')
+                gt_folder = os.path.join(anomal_folder_dir, 'gt_pil')
                 if args.object_crop:
                     object_mask_folder = os.path.join(anomal_folder_dir, 'object_mask')
                 rgb_imgs = os.listdir(rgb_folder)
