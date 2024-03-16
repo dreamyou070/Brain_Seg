@@ -115,7 +115,7 @@ class NormalActivator(nn.Module):
         total_score = torch.ones_like(cls_score)
 
         # [2]
-        normal_cls_score = cls_score * (1-anomal_position_vector)
+        normal_cls_score = cls_score * (1-anomal_position_vector) # ------------------------------------
         normal_trigger_score = trigger_score * (1-anomal_position_vector)
         anomal_cls_score = cls_score * anomal_position_vector
         anomal_trigger_score = trigger_score * anomal_position_vector

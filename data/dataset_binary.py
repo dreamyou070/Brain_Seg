@@ -145,7 +145,7 @@ class TrainDataset_Binary(Dataset):
 
         # [2] gt dir
         gt_path = self.gt_paths[idx]  # 128,128,1
-        gt = self.load_image(gt_path, 64,64, type='RGB')  # np.array,
+        gt = self.load_image(gt_path, 64,64, type='L')  # np.array,
         gt = torch.from_numpy(gt)
         gt = torch.where(gt==0, 0, 1) # anomal position
 
