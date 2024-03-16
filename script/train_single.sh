@@ -7,7 +7,7 @@ benchmark="BraTS2020_Segmentation_multisegment"
 trigger_word='brain'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="2_binary_segmentation_BraTS2020"
+file_name="4_binary_segmentation_BraTS2020_text_truncate"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train_single.py --log_with wandb \
@@ -21,4 +21,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --trg_layer_list "['up_blocks_1_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
- --do_attn_loss --attn_loss_weight 1.0 --do_cls_train --normal_weight 1 --binary_test
+ --do_attn_loss --attn_loss_weight 1.0 --do_cls_train --normal_weight 1 --binary_test --text_truncate

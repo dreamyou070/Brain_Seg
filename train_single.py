@@ -118,6 +118,8 @@ def main(args):
             loss_dict = {}
             with torch.set_grad_enabled(True):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
+                if args.text_truncate :
+                    encoder_hidden_states = encoder_hidden_states[:,:,:2]
             # ------------------------------------------------------------------------------------------------------------
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
             anomal_position_vector = batch['gt'].to(dtype=weight_dtype).squeeze().flatten() # 64,64 -> anomal_position
@@ -290,7 +292,7 @@ if __name__ == "__main__":
     parser.add_argument("--local_hidden_states_globalize", action='store_true')
     parser.add_argument("--normal_activating_test", action='store_true')
     parser.add_argument("--binary_test", action='store_true')
-
+    parser.add_argument("--text_truncate", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
