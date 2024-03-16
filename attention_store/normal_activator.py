@@ -115,8 +115,8 @@ class NormalActivator(nn.Module):
         self.anomal_map_loss.append(map_loss)
 
     def generate_attention_loss_multi(self):
-        if len(self.attention_loss) != 0:
-            attn_loss = torch.stack(self.attention_loss, dim=0).mean(dim=0) # [num, head9, pix_num] -> [head9, pix_num]
+        if len(self.attention_loss_multi) != 0:
+            attn_loss = torch.stack(self.attention_loss_multi, dim=0).mean(dim=0) # [num, head9, pix_num] -> [head9, pix_num]
         self.attention_loss = []
         return attn_loss
 
