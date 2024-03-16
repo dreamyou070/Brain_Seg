@@ -67,7 +67,7 @@ class TestDataset(Dataset):
 
         return sample
 
-class TrainDataset_multi(Dataset):
+class TrainDataset_Multi(Dataset):
 
     def __init__(self,
                  root_dir,
