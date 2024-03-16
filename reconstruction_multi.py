@@ -78,18 +78,11 @@ def inference(latent,
     attention_scores = torch.baddbmm(torch.empty(query.shape[0], query.shape[1], key.shape[1], dtype=query.dtype,
                     device=query.device), query, key.transpose(-1, -2),beta=0, )
     attn_score = attention_scores.softmax(dim=-1)[:, :, :4]
-    normal_map = attn_score[:,:,0].squeeze().mean(dim=0) # 8, pix_num
-    necrotic_map = attn_score[:,:,1].squeeze().mean(dim=0)
-    ederma_map = attn_score[:, :, 2].squeeze().mean(dim=0)
-    tumor_map = attn_score[:, :, 3].squeeze().mean(dim=0)
-
-    res = 64
-    normal_pil = generate_pil(normal_map, res, org_h, org_w)
-    necrotic_pil = generate_pil(necrotic_map, res, org_h, org_w)
-    ederma_pil = generate_pil(ederma_map, res, org_h, org_w)
-    tumor_pil = generate_pil(tumor_map, res, org_h, org_w)
-
-    return normal_pil, necrotic_pil, ederma_pil, tumor_pil
+    anomal_map = attention_scores.softmax(dim=-1)[:, :, 1:4] # 8, pix_num
+    anomal_map = anomal_map.mean(dim = 0)
+    anomal_map = anomal_map.view(64, 64, 3)
+    anomal_pil = Image.fromarray((anomal_map * 255).astype(np.uint8)).resize((org_h, org_w))
+    return anomal_pil
 
 
 
@@ -198,7 +191,7 @@ def main(args):
 
                 anomal_folder_dir = os.path.join(test_img_folder, anomal_folder)
                 rgb_folder = os.path.join(anomal_folder_dir, 'xray')
-                gt_folder = os.path.join(anomal_folder_dir, 'gt')
+                gt_folder = os.path.join(anomal_folder_dir, 'gt_npy')
                 rgb_imgs = os.listdir(rgb_folder)
 
                 for rgb_img in rgb_imgs:
@@ -221,7 +214,7 @@ def main(args):
                                     latent = position_embedder.patch_embed(image.to(dtype=weight_dtype))
                                 else:
                                     latent = vae.encode(image.to(dtype=weight_dtype)).latent_dist.sample() * 0.18215
-                            normal_pil, necrotic_pil, ederma_pil, tumor_pil = inference(latent,
+                            anomal_pil = inference(latent,
                                                                                      tokenizer, text_encoder, unet,
                                                                                      controller, normal_activator,
                                                                                      position_embedder,
@@ -229,10 +222,7 @@ def main(args):
                                                                                      trg_h, trg_w,
                                                                                      thred, global_network)
 
-                            normal_pil.save(os.path.join(save_base_folder, f'{name}_healthy.png'))
-                            necrotic_pil.save(os.path.join(save_base_folder, f'{name}_necrotic.png'))
-                            ederma_pil.save( os.path.join(save_base_folder, f'{name}_ederma.png'))
-                            tumor_pil.save(os.path.join(save_base_folder, f'{name}_tumor.png'))
+                            anomal_pil.save(os.path.join(save_base_folder, f'{name}_anomal.png'))
                     controller.reset()
                     normal_activator.reset()
                     # [2] gt save
