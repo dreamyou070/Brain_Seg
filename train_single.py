@@ -129,7 +129,7 @@ def main(args):
                 unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
             query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
             controller.reset()
-            query_list, key_list = [], [], [], []
+            query_list, key_list = [], []
             for layer in args.trg_layer_list:
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
                 query_list.append(resize_query_features(query))  # head, pix_num, dim
