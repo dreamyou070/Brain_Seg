@@ -243,6 +243,27 @@ class NormalActivator(nn.Module):
         self.attention_loss = []
         return attn_loss
 
+    def generate_attention_loss_binary(self):
+
+        normal_cls_loss = torch.tensor(0.0, requires_grad=True)
+        normal_trigger_loss = torch.tensor(0.0, requires_grad=True)
+        if len(self.attention_loss_dict['normal_cls_loss']) != 0:
+            normal_cls_loss = torch.stack(self.attention_loss_dict['normal_cls_loss'], dim=0).mean(dim=0)
+            normal_trigger_loss = torch.stack(self.attention_loss_dict['normal_trigger_loss'], dim=0).mean(dim=0)
+
+        anomal_cls_loss = torch.tensor(0.0, requires_grad=True)
+        anomal_trigger_loss = torch.tensor(0.0, requires_grad=True)
+        if len(self.attention_loss_dict['anomal_cls_loss']) != 0:
+            anomal_cls_loss = torch.stack(self.attention_loss_dict['anomal_cls_loss'], dim=0).mean(dim=0)
+            anomal_trigger_loss = torch.stack(self.attention_loss_dict['anomal_trigger_loss'], dim=0).mean(dim=0)
+
+        self.attention_loss_dict = {'normal_cls_loss': [], 'normal_trigger_loss': [],
+                               'anomal_cls_loss': [], 'anomal_trigger_loss': []}
+        return normal_cls_loss, normal_trigger_loss, anomal_cls_loss, anomal_trigger_loss
+
+
+
+
     def generate_anomal_map_loss(self):
         map_loss = torch.stack(self.anomal_map_loss, dim=0)
         map_loss = map_loss.mean()

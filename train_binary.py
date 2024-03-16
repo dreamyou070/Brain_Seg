@@ -139,8 +139,6 @@ def main(args):
             # [1] local
             local_query = torch.cat(query_list, dim=-1)  # head, pix_num, long_dim
             local_key = torch.cat(key_list, dim=-1).squeeze()  # head, 77, long_dim
-            # learnable weight ?
-            # local_query = [8, 64*64, 280] = [64*64, 2240]
             attention_scores = torch.baddbmm(torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
                                                          device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
             attn = attention_scores.softmax(dim=-1)[:, :, :2]
@@ -149,7 +147,16 @@ def main(args):
 
             # [5] backprop
             if args.do_attn_loss:
-                attn_loss = args.attn_loss_weight * normal_activator.generate_attention_loss().mean()
+                normal_cls_loss, normal_trigger_loss, anomal_cls_loss, anomal_trigger_loss = normal_activator.generate_attention_loss_binary()
+                if type(anomal_cls_loss) == float:
+                    attn_loss = args.normal_weight * normal_trigger_loss.mean()
+                else:
+                    attn_loss = args.normal_weight * normal_cls_loss.mean() + args.anomal_weight * anomal_cls_loss.mean()
+                if args.do_cls_train:
+                    if type(anomal_trigger_loss) == float:
+                        attn_loss = args.normal_weight * normal_cls_loss.mean()
+                    else:
+                        attn_loss += args.normal_weight * normal_cls_loss.mean() + args.anomal_weight * anomal_cls_loss.mean()
                 loss += attn_loss
                 loss_dict['attn_loss'] = attn_loss.item()
 
