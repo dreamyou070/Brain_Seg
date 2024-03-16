@@ -41,7 +41,7 @@ def call_dataset(args) :
         caption = caption.strip()
         print(f'caption = {caption}')
         dataset = TrainDataset_Multi(root_dir=root_dir,
-                                     resize_shape=[512, 512],
+                                     resize_shape=[args.resize_shape, args.resize_shape],
                                      tokenizer=tokenizer,
                                      caption=caption,
                                      latent_res=args.latent_res,)
