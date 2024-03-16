@@ -80,7 +80,7 @@ def inference(latent,
     attn_score = attention_scores.softmax(dim=-1)[:, :, :4]
     anomal_map = attention_scores.softmax(dim=-1)[:, :, 1:4] # 8, pix_num
     anomal_map = anomal_map.mean(dim = 0)
-    anomal_map = anomal_map.view(64, 64, 3)
+    anomal_map = anomal_map.view(64, 64, 3).cpu().detach().numpy()
     anomal_pil = Image.fromarray((anomal_map * 255).astype(np.uint8)).resize((org_h, org_w))
     return anomal_pil
 

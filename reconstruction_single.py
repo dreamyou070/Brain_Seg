@@ -89,8 +89,8 @@ def inference(latent,
     cls_map, trigger_map = cls_score.mean(dim=0), trigger_score.mean(dim=0)  # pix_num
     pix_num = trigger_map.shape[0]
     res = int(pix_num ** 0.5)
-    cls_map = cls_map.unsqueeze(0).view(res, res).cpu().detach().numpy()
-    cls_map_pil = Image.fromarray((255 * cls_map).astype(np.uint8)).resize((org_h, org_w))
+    cls_map = cls_map.unsqueeze(0).view(res, res)
+    cls_map_pil = Image.fromarray((255 * cls_map).cpu().detach().numpy().astype(np.uint8)).resize((org_h, org_w))
     """ value higher than thred be normal, """
     normal_map = torch.where(trigger_map > thred, 1, trigger_map).squeeze()
     normal_map = normal_map.unsqueeze(0).view(res, res)
