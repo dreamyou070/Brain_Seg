@@ -191,7 +191,7 @@ def main(args):
 
                 anomal_folder_dir = os.path.join(test_img_folder, anomal_folder)
                 rgb_folder = os.path.join(anomal_folder_dir, 'xray')
-                gt_folder = os.path.join(anomal_folder_dir, 'gt_npy')
+                gt_folder = os.path.join(anomal_folder_dir, 'gt_rgb')
                 rgb_imgs = os.listdir(rgb_folder)
 
                 for rgb_img in rgb_imgs:
