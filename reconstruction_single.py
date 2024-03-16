@@ -91,6 +91,7 @@ def inference(latent,
     res = int(pix_num ** 0.5)
     cls_map = cls_map.unsqueeze(0).view(res, res)
     cls_map_pil = Image.fromarray((255 * cls_map).cpu().detach().numpy().astype(np.uint8)).resize((org_h, org_w))
+    """ value higher than thred be normal, """
     normal_map = torch.where(trigger_map > thred, 1, trigger_map).squeeze()
     normal_map = normal_map.unsqueeze(0).view(res, res)
     normal_map_pil = Image.fromarray(
