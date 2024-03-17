@@ -115,6 +115,7 @@ def main(args):
                     encoder_hidden_states = encoder_hidden_states[:,:2,:]
                 image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
                 true_masks = batch['gt'].to(dtype=weight_dtype) # 1,4,64,64
+                #true_mask_one_hot = batch['gt_vector'].to(dtype=weight_dtype) # 1,4,64,64
                 with torch.no_grad():
                     latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
                 with torch.set_grad_enabled(True):
@@ -135,7 +136,8 @@ def main(args):
             loss = criterion(masks_pred, true_masks)
             loss_dict['cross_entropy_loss'] = loss.item()
             loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
-                              F.one_hot(true_masks, segmentation_model.module.n_classes).permute(0, 3, 1, 2).float(),
+                              true_masks,
+                              #F.one_hot(true_masks, segmentation_model.module.n_classes).permute(0, 3, 1, 2).float(),
                               multiclass=True)
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
