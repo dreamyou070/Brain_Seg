@@ -145,7 +145,9 @@ def main(args):
     raw_state_dict = network.state_dict()
     raw_state_dict_orig = raw_state_dict.copy()
 
-    normal_activator = NormalActivator(None, None, args.use_focal_loss)
+    normal_activator = NormalActivator(None, None, None,
+                                       args.use_focal_loss,
+                                       None)
 
     for model in models:
 
