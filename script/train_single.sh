@@ -1,19 +1,19 @@
 # !/bin/bash
 #
-port_number=50072
+port_number=50071
 category="medical"
 obj_name="brain"
-benchmark="BraTS2020_Segmentation_class_2"
+benchmark="BraTS2020_Segmentation_class_1"
 trigger_word='brain'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="10_class2_single_BraTS2020_text_truncate"
+file_name="10_class1_single_BraTS2020_text_truncate"
 
-accelerate launch --config_file ../../../gpu_config/gpu_0_1_config \
+accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_config \
  --main_process_port $port_number ../train_single.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
- --network_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/models/epoch-000004.safetensors" \
- --position_embedder_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/position_embedder/position_embedder_4.safetensors" \
+ --network_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/models/epoch-000005.safetensors" \
+ --position_embedder_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/position_embedder/position_embedder_5.safetensors" \
  --train_unet --train_text_encoder --start_epoch 4 --max_train_epochs 96 \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
  --data_path "/home/dreamyou070/MyData/anomaly_detection/medical/brain/${benchmark}" \
