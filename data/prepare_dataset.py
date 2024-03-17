@@ -22,7 +22,7 @@ def call_dataset(args) :
                                 latent_res=args.latent_res, )
 
     else :
-        root_dir = os.path.join(args.data_path, f'train_')
+        root_dir = os.path.join(args.data_path, f'train')
         from data.dataset_multi import TrainDataset_Multi
         nectoric_word = ['necrotic']
         ederma_word = ['ederma']
