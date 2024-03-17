@@ -54,7 +54,8 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
             encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             if args.text_truncate:
                 encoder_hidden_states = encoder_hidden_states[:, :2, :]
-            image, mask_true = batch['image'].to(dtype=weight_dtype), batch['gt'].to(dtype=weight_dtype)
+            image, mask_true_vector = batch['image'].to(dtype=weight_dtype), batch['gt_vector'].to(dtype=weight_dtype)
+
             latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
                  noise_type=position_embedder)
@@ -74,7 +75,7 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
             mask_pred = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy() # 1,64,64,4
             mask_pred_argmax = np.argmax(mask_pred, axis=3).flatten()
             # [2] real (1,4,64,64)
-            mask_true = mask_true.permute(0, 2, 3, 1).detach().cpu().numpy().flatten()
+            mask_true = mask_true_vector.detach().cpu().numpy().flatten()
             # [3] IoU
             from sklearn.metrics import confusion_matrix
             values = confusion_matrix(mask_true,mask_pred_argmax)
