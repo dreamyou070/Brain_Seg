@@ -12,7 +12,7 @@ from utils.attention_control import passing_argument, register_attention_control
 from utils.accelerator_utils import prepare_accelerator
 from utils.optimizer_utils import get_optimizer, get_scheduler_fix
 from utils.model_utils import pe_model_save, te_model_save
-from utils.utils_loss import FocalLoss
+from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
 from data.prepare_dataset import call_dataset
 from model import call_model_package
 from attention_store.normal_activator import passing_normalize_argument
@@ -59,8 +59,11 @@ def main(args):
     print(f'\n step 7. loss function')
     loss_focal = FocalLoss()
     loss_l2 = torch.nn.modules.loss.MSELoss(reduction='none')
-    crossentropy_loss_fn = nn.CrossEntropyLoss()
-    normal_activator = NormalActivator(loss_focal, loss_l2, crossentropy_loss_fn, args.use_focal_loss)
+    multiclassification_loss_fn = nn.CrossEntropyLoss()
+    if args.multiclassification_focal_loss :
+        multiclassification_loss_fn = Multiclass_FocalLoss()
+
+    normal_activator = NormalActivator(loss_focal, loss_l2, multiclassification_loss_fn, args.use_focal_loss)
 
     print(f'\n step 8. model to device')
     if args.use_position_embedder  :
@@ -292,6 +295,7 @@ if __name__ == "__main__":
     parser.add_argument("--normal_activating_test", action='store_true')
     parser.add_argument("--train_single", action='store_true')
     parser.add_argument("--resize_shape", type=int, default=512)
+    parser.add_argument("--multiclassification_focal_loss", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)

@@ -9,7 +9,7 @@ def passing_normalize_argument(args):
 
 class NormalActivator(nn.Module):
 
-    def __init__(self, loss_focal, loss_l2, crossentropy_loss_fn, use_focal_loss):
+    def __init__(self, loss_focal, loss_l2, multiclassification_loss_fn, use_focal_loss):
         super(NormalActivator, self).__init__()
 
 
@@ -25,7 +25,7 @@ class NormalActivator(nn.Module):
         # [3]
         self.loss_focal = loss_focal
         self.loss_l2 = loss_l2
-        self.crossentropy_loss_fn = crossentropy_loss_fn
+        self.multiclassification_loss_fn = multiclassification_loss_fn
         self.anomal_map_loss = []
         self.use_focal_loss = use_focal_loss
         # [4]
@@ -60,7 +60,7 @@ class NormalActivator(nn.Module):
         attn_score = attn_score.squeeze()   # [8,res*res,4]
         attn_score = attn_score.mean(dim=0) # [res*res,4]
         gt_vector = gt_vector.squeeze().type(torch.LongTensor).to(attn_score.device) # [res*res]
-        loss = self.crossentropy_loss_fn(attn_score, gt_vector)
+        loss = self.multiclassification_loss_fn(attn_score, gt_vector)
         self.anomal_map_loss.append(loss)
 
     def collect_attention_scores_single(self,

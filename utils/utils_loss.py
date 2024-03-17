@@ -4,23 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from math import exp
 
-"""
-def gen_attn_loss(value_dict):
-    anormal_cls_loss = torch.tensor(value_dict['anormal_cls_score_loss']).mean()
-    anormal_trigger_loss = torch.tensor(value_dict['anormal_trigger_score_loss']).mean()
-    normal_cls_loss = torch.tensor(value_dict['normal_cls_score_loss']).mean()
-    normal_trigger_loss = torch.tensor(value_dict['normal_trigger_score_loss']).mean()
-    return normal_cls_loss, normal_trigger_loss, anormal_cls_loss, anormal_trigger_loss
-
-def gen_value_dict(value_dict, cls_score_loss, trigger_score_loss):
-    if 'cls_loss' not in value_dict.keys():
-        value_dict['cls_loss'] = []
-    value_dict['cls_loss'].append(cls_score_loss)
-    if 'trigger_loss' not in value_dict.keys():
-        value_dict['trigger_loss'] = []
-    value_dict['trigger_loss'].append(trigger_score_loss)
-    return value_dict
-"""
 def gen_attn_loss(value_dict):
     cls_loss = torch.stack(value_dict['cls_loss'] , dim=0).mean(dim=0)
     trigger_loss = torch.stack(value_dict['trigger_loss'], dim=0).mean(dim=0)
@@ -103,6 +86,27 @@ class FocalLoss(nn.Module):
         if self.size_average:
             loss = loss.mean()
         return loss
+
+class Multiclass_FocalLoss(nn.Module):
+    '''
+    Multi-class Focal loss implementation
+    '''
+    def __init__(self, gamma=2, weight=None):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        self.weight = weight
+
+    def forward(self, input, target):
+        """
+        input: [N, C]
+        target: [N, ]
+        """
+        logpt = F.log_softmax(input, dim=1)
+        pt = torch.exp(logpt)
+        logpt = (1-pt)**self.gamma * logpt
+        loss = F.nll_loss(logpt, target, self.weight)
+        return loss
+
 
 def gaussian(window_size, sigma):
     gauss = torch.Tensor([exp(-(x - window_size//2)**2/float(2*sigma**2)) for x in range(window_size)])
