@@ -104,7 +104,7 @@ def main(args):
         segmentation_model.train()
         epoch_loss_total = 0
         accelerator.print(f"\nepoch {epoch + 1}/{args.start_epoch + args.max_train_epochs}")
-        
+
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
             loss_dict = {}

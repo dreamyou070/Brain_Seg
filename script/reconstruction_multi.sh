@@ -9,7 +9,7 @@ layer_name='layer_3'
 sub_folder="up_16_32_64"
 file_name="9_multi_segmentation_BraTS2020_only_anomal_use_multiclassification_focal_loss_do_class_weight_deactivating"
 
-accelerate launch --config_file ../../../gpu_config/gpu_0_config \
+accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../reconstruction_multi.py \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
  --network_dim 64 --network_alpha 4 \
