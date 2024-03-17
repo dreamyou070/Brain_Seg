@@ -169,6 +169,7 @@ def main(args):
             pe_model_save(accelerator.unwrap_model(segmentation_model), save_dtype, p_save_dir)
     accelerator.end_training()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -246,8 +247,10 @@ if __name__ == "__main__":
     parser.add_argument("--do_attn_loss", action='store_true')
     parser.add_argument("--do_cls_train", action='store_true')
     parser.add_argument("--attn_loss_weight", type=float, default=1.0)
-    parser.add_argument("--anomal_weight", type=float, default=1.0)
-    parser.add_argument('--normal_weight', type=float, default=1.0)
+
+    parser.add_argument("--activating_loss_weight", type=float, default=1.0)
+    parser.add_argument('--deactivating_loss_weight', type=float, default=1.0)
+
     parser.add_argument("--trg_layer_list", type=arg_as_list, default=[])
     parser.add_argument("--original_normalized_score", action='store_true')
     parser.add_argument("--do_map_loss", action='store_true')
@@ -262,7 +265,9 @@ if __name__ == "__main__":
     parser.add_argument("--local_hidden_states_globalize", action='store_true')
     parser.add_argument("--normal_activating_test", action='store_true')
     parser.add_argument("--train_single", action='store_true')
-    parser.add_argument("--text_truncate", action='store_true')
+    parser.add_argument("--resize_shape", type=int, default=512)
+    parser.add_argument("--multiclassification_focal_loss", action='store_true')
+    parser.add_argument("--do_class_weight", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
