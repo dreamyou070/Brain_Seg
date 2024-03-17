@@ -1,13 +1,13 @@
 # !/bin/bash
 #
-port_number=50066
+port_number=50070
 category="medical"
 obj_name="brain"
-benchmark="BraTS2020_Segmentation_class_1"
+benchmark="BraTS2020_Segmentation_class_2"
 trigger_word='brain'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="10_class1_single_BraTS2020_text_truncate"
+file_name="10_class2_single_BraTS2020_text_truncate"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train_single.py --log_with wandb \
