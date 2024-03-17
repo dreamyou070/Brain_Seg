@@ -135,7 +135,7 @@ def main(args):
             loss = criterion(masks_pred, true_masks)
             loss_dict['cross_entropy_loss'] = loss.item()
             loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
-                              F.one_hot(true_masks, segmentation_model.n_classes).permute(0, 3, 1, 2).float(),
+                              F.one_hot(true_masks, segmentation_model.module.n_classes).permute(0, 3, 1, 2).float(),
                               multiclass=True)
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
