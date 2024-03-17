@@ -26,7 +26,5 @@ class FocalLoss(nn.Module):
         return loss
 
 multi_class_focal_loss = FocalLoss()
-input = torch.randn(64*64,4)
-target = (torch.randn(64*64) * 0).type(torch.LongTensor)
-loss = multi_class_focal_loss(input, target)
-print(loss)
+for n in multi_class_focal_loss.named_parameters() :
+    print(n)
