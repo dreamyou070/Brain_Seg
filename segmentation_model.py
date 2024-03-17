@@ -270,6 +270,7 @@ if __name__ == "__main__":
     parser.add_argument("--resize_shape", type=int, default=512)
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
     parser.add_argument("--do_class_weight", action='store_true')
+    parser.add_argument("--text_truncate", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
