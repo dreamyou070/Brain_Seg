@@ -139,7 +139,7 @@ def main(args):
                 c = masks_pred.shape[-1]
                 masks_pred = masks_pred.view(-1, c)
                 loss = loss_multi_focal(masks_pred, # N,C
-                                        true_mask_one_hot.squeeze()) # N
+                                        true_mask_one_hot.squeeze().to(masks_pred.device)) # N
             loss_dict['cross_entropy_loss'] = loss.item()
             loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
                               true_masks,
