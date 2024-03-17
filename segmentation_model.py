@@ -131,13 +131,11 @@ def main(args):
             # segmentation model
             masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])
             # target = true mask
-
-            with torch.autocast():
-                loss = criterion(masks_pred, true_masks)
-                loss_dict['cross_entropy_loss'] = loss.item()
-                loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
-                                  F.one_hot(true_masks, segmentation_model.n_classes).permute(0, 3, 1, 2).float(),
-                                  multiclass=True)
+            loss = criterion(masks_pred, true_masks)
+            loss_dict['cross_entropy_loss'] = loss.item()
+            loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
+                              F.one_hot(true_masks, segmentation_model.n_classes).permute(0, 3, 1, 2).float(),
+                              multiclass=True)
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
             if epoch == args.start_epoch:
