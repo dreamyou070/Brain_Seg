@@ -22,6 +22,7 @@ class NormalActivator(nn.Module):
         self.attention_loss_dict['anomal_cls_loss'] = []
         self.attention_loss_dict['normal_trigger_loss'] = []
         self.attention_loss_dict['anomal_trigger_loss'] = []
+        self.attention_loss_class_dict = {}
         self.trigger_score = []
         self.cls_score = []
         # [3]
@@ -53,10 +54,17 @@ class NormalActivator(nn.Module):
             attn_gt = gt[:,:, seq_idx].squeeze().flatten() # [pix_num]
             attn_gt = attn_gt.unsqueeze(0).repeat(head, 1) # [head, pix_num]
             total_score = torch.ones_like(attn_gt).to(attn.device)
-            attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2) # head, pix_num -> attention should be big
+            # [1] activating
+            activating_loss = (1 - (attn * (attn_gt/total_score)) ** 2) # head, pix_num -> attention should be big
+            # [2] deactivating
+            deactivating_loss = (attn * ((1-attn_gt) / total_score)) ** 2
             if argument.do_class_weight :
-                attn_loss = float(self.class_weight[seq_idx]) * attn_loss
-            self.attention_loss_multi.append(attn_loss)
+                activating_loss = float(self.class_weight[seq_idx]) * activating_loss
+                deactivating_loss = float(self.class_weight[seq_idx]) * deactivating_loss
+            if seq_idx not in self.attention_loss_class_dict :
+                self.attention_loss_class_dict[seq_idx] = []
+            self.attention_loss_class_dict[seq_idx].append(activating_loss)
+            self.attention_loss_class_dict[seq_idx].append(deactivating_loss)
 
     def collect_anomal_map_loss_multi_crossentropy(self,
                                                    attn_score, # [8, 64*64, 4]
@@ -65,7 +73,7 @@ class NormalActivator(nn.Module):
         attn_score = attn_score.squeeze()   # [8,res*res,4]
         attn_score = attn_score.mean(dim=0) # [res*res,4]
         gt_vector = gt_vector.squeeze().type(torch.LongTensor).to(attn_score.device) # [res*res]
-        loss = self.multiclassification_loss_fn(attn_score, gt_vector)
+        loss = self.multiclassification_loss_fn(attn_score, gt_vector) # what form ? (one value)
         self.anomal_map_loss.append(loss)
 
     def collect_attention_scores_single(self,
@@ -131,10 +139,17 @@ class NormalActivator(nn.Module):
         self.anomal_map_loss.append(map_loss)
 
     def generate_attention_loss_multi(self):
-        if len(self.attention_loss_multi) != 0:
-            attn_loss = torch.stack(self.attention_loss_multi, dim=0).mean(dim=0) # [num, head9, pix_num] -> [head9, pix_num]
-        self.attention_loss = []
-        return attn_loss
+
+        class_ = self.attention_loss_class_dict.keys()
+        activating_loss, deactivating_loss = [], []
+        for class_idx in class_ :
+            act_loss, deact_loss = self.attention_loss_class_dict[class_idx] # [head, pix_num]
+            activating_loss.append(act_loss)
+            deactivating_loss.append(deact_loss)
+        activating_loss = torch.stack(activating_loss, dim=0).mean(dim=0)  # [num, head9, pix_num] -> [head, pix_num]
+        deactivating_loss = torch.stack(deactivating_loss, dim=0).mean(dim=0)  # [num, head9, pix_num] -> [head, pix_num]
+        self.attention_loss_class_dict = {}
+        return activating_loss, deactivating_loss
 
     def generate_attention_loss_single(self):
 

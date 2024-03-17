@@ -162,18 +162,18 @@ def main(args):
                                                          device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
             attn = attention_scores.softmax(dim=-1)[:, :, :4]
             normal_activator.collect_attention_scores_multi(attn, gt)
-
-            # ------------------------------------------------------------------------------------------
             normal_activator.collect_anomal_map_loss_multi_crossentropy(attn, gt_vector)
 
             # [5] backprop
             if args.do_attn_loss:
-                attn_loss = normal_activator.generate_attention_loss_multi()
-                attn_loss = args.attn_loss_weight * attn_loss.mean()
-                loss += attn_loss
-                loss_dict['attn_loss'] = attn_loss.item()
+                activating_loss, deactivating_loss = normal_activator.generate_attention_loss_multi()
+                loss += args.activating_loss_weight * activating_loss.mean()
+                loss_dict['activating_loss'] = activating_loss.mean().item()
+                loss += args.deactivating_loss_weight * deactivating_loss.mean()
+                loss_dict['deactivating_loss'] = deactivating_loss.mean().item()
 
             if args.do_map_loss:
+                # self.anomal_map_loss
                 map_loss = normal_activator.generate_anomal_map_loss()
                 loss += map_loss
                 loss_dict['map_loss'] = map_loss.item()
@@ -291,8 +291,10 @@ if __name__ == "__main__":
     parser.add_argument("--do_attn_loss", action='store_true')
     parser.add_argument("--do_cls_train", action='store_true')
     parser.add_argument("--attn_loss_weight", type=float, default=1.0)
-    parser.add_argument("--anomal_weight", type=float, default=1.0)
-    parser.add_argument('--normal_weight', type=float, default=1.0)
+
+    parser.add_argument("--activating_loss_weight", type=float, default=1.0)
+    parser.add_argument('--deactivating_loss_weight', type=float, default=1.0)
+
     parser.add_argument("--trg_layer_list", type=arg_as_list, default=[])
     parser.add_argument("--original_normalized_score", action='store_true')
     parser.add_argument("--do_map_loss", action='store_true')
