@@ -65,7 +65,7 @@ def main(args):
 
     print(f' (7.2) call class weight')
     import numpy as np
-    class_weight_file = 'data/class_weights.npy'
+    class_weight_file = r'/share0/dreamyou070/dreamyou070/BrainSeg/Brain_Seg/data/class_weights.npy'
     weight = np.load(class_weight_file)
     total_weight = weight.sum()
     weight = weight / total_weight
