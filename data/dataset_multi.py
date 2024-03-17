@@ -188,8 +188,8 @@ class TrainDataset_Multi(Dataset):
 
         # [2] gt dir
         gt_path = self.gt_paths[idx]
-        gt_array = np.load(gt_path)  # (240,240)
-        gt_vector = torch.from_numpy(gt_array).flatten()
+        gt_array = np.load(gt_path)                      # [64,64]]
+        gt_vector = torch.from_numpy(gt_array).flatten() # [4096]
 
         # (1) 64
         base_gt = np.zeros((self.latent_res , self.latent_res, self.num_classes))

@@ -115,7 +115,7 @@ def main(args):
                     encoder_hidden_states = encoder_hidden_states[:,:2,:]
                 image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
                 true_masks = batch['gt'].to(dtype=weight_dtype) # 1,4,64,64
-                #true_mask_one_hot = batch['gt_vector'].to(dtype=weight_dtype) # 1,4,64,64
+                true_mask_one_hot = batch['gt_vector'].to(dtype=weight_dtype) # 4096
                 with torch.no_grad():
                     latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
                 with torch.set_grad_enabled(True):
@@ -135,8 +135,11 @@ def main(args):
             # target = true mask
             loss = criterion(masks_pred, true_masks)
             if args.multiclassification_focal_loss :
-                loss = loss_multi_focal(masks_pred, true_masks)
-
+                masks_pred = masks_pred.permute(0,2,3,1)
+                c = masks_pred.shape[-1]
+                masks_pred = masks_pred.view(-1, c)
+                loss = loss_multi_focal(masks_pred, # N,C
+                                        true_mask_one_hot.squeeze()) # N
             loss_dict['cross_entropy_loss'] = loss.item()
             loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
                               true_masks,
