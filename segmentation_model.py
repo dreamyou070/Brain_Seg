@@ -112,21 +112,21 @@ def main(args):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
                 if args.text_truncate :
                     encoder_hidden_states = encoder_hidden_states[:,:2,:]
-                    image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
-                    true_masks = batch['gt'].to(dtype=weight_dtype).squeeze().flatten() # 1,4,64,64
-                    with torch.no_grad():
-                        latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
-                    with torch.set_grad_enabled(True):
-                        unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
-                    query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
-                    controller.reset()
-                    q_dict = {}
-                    for layer in args.trg_layer_list:
-                        query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                        head, pix_num, dim = query.shape
-                        res = int(pix_num ** 0.5)
-                        query = query.view(head, res, res, dim).permute(0,3,1,2).mean(dim=0)
-                        q_dict[res] = query
+                image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
+                true_masks = batch['gt'].to(dtype=weight_dtype).squeeze().flatten() # 1,4,64,64
+                with torch.no_grad():
+                    latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
+                with torch.set_grad_enabled(True):
+                    unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
+                query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
+                controller.reset()
+                q_dict = {}
+                for layer in args.trg_layer_list:
+                    query = query_dict[layer][0].squeeze()  # head, pix_num, dim
+                    head, pix_num, dim = query.shape
+                    res = int(pix_num ** 0.5)
+                    query = query.view(head, res, res, dim).permute(0,3,1,2).mean(dim=0)
+                    q_dict[res] = query
             #######################################################################################################################
             # segmentation model
             masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])
