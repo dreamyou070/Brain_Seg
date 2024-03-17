@@ -58,7 +58,7 @@ class NormalActivator(nn.Module):
                                                    do_normal_activating=True):
         attn_score = attn_score.squeeze()   # [8,res*res,4]
         attn_score = attn_score.mean(dim=0) # [res*res,4]
-        gt_vector = gt_vector.squeeze() # [res*res]
+        gt_vector = gt_vector.squeeze().type(torch.LongTensor) # [res*res]
         crossentropy_loss_fn = nn.CrossEntropyLoss()
         loss = crossentropy_loss_fn (attn_score, gt_vector)
         self.anomal_map_loss.append(loss)
