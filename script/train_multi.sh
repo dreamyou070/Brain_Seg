@@ -1,6 +1,6 @@
 # !/bin/bash
 #
-port_number=50678
+port_number=50679
 category="medical"
 obj_name="brain"
 benchmark="BraTS2020_Segmentation_multisegment"
