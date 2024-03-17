@@ -91,8 +91,8 @@ def main(args):
     optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params)
     lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
     segmentation_model = transform_models_if_DDP([segmentation_model])[0]
-    segmentation_model, optimizer, train_dataloader, test_dataloader, lr_scheduler = accelerator.prepare(segmentation_model, optimizer,
-                                                                                        train_dataloader, test_dataloader, lr_scheduler)
+    segmentation_model, optimizer, train_dataloader, test_dataloader, lr_scheduler, loss_multi_focal = accelerator.prepare(segmentation_model, optimizer,
+                                                                       train_dataloader, test_dataloader, lr_scheduler, loss_multi_focal)
 
     print(f'\n step 10. Training !')
     progress_bar = tqdm(range(args.max_train_steps), smoothing=0,
