@@ -126,7 +126,7 @@ def main(args):
                     head, pix_num, dim = query.shape
                     res = int(pix_num ** 0.5)
                     query = query.view(head, res, res, dim).permute(0,3,1,2).mean(dim=0)
-                    q_dict[res] = query
+                    q_dict[res] = query.unsqueeze(0)
             #######################################################################################################################
             # segmentation model
             masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])
