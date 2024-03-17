@@ -46,6 +46,7 @@ def main(args):
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
 
 
+
     print(f'\n step 7. loss function')
     loss_focal = FocalLoss()
     loss_l2 = torch.nn.modules.loss.MSELoss(reduction='none')
@@ -74,6 +75,8 @@ def main(args):
     del t_enc
     network.prepare_grad_etc(text_encoder, unet)
     vae.to(accelerator.device, dtype=weight_dtype)
+    network.to(accelerator.device, dtype=weight_dtype)
+    position_embedder.to(accelerator.device, dtype=weight_dtype)
 
     print(f'\n step 9. registering saving tensor')
     controller = AttentionStore()
@@ -104,7 +107,6 @@ def main(args):
 
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
-            loss = torch.tensor(0.0, dtype=weight_dtype, device=accelerator.device)
             loss_dict = {}
             with torch.no_grad():
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
