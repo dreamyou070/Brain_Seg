@@ -7,7 +7,7 @@ benchmark="BraTS2020_Segmentation_multisegment"
 trigger_word='necrotic, ederma, tumor'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="8_multi_segmentation_BraTS2020_only_anomal_use_multiclassification_focal_loss_do_class_weight_deactivating"
+file_name="9_multi_segmentation_BraTS2020_only_anomal_use_multiclassification_focal_loss_do_class_weight_deactivating"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train_multi.py --log_with wandb \
