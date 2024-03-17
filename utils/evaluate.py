@@ -71,7 +71,7 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
             # segmentation model
             # [1] pred
             mask_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
-            mask_pred = mask_pred.permute(0, 2, 3, 1).detach().numpy() # 1,64,64,4
+            mask_pred = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy() # 1,64,64,4
             mask_pred_argmax = np.argmax(mask_pred, axis=3) # 1,64,64
             # [2] real (1,4,64,64)
             mask_true = mask_true.permute(0, 2, 3, 1).detach().numpy()
