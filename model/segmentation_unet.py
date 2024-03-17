@@ -118,12 +118,5 @@ class UNet(nn.Module):
         logits = self.outc(x)
         return logits
 
-# how to handle multi head ..?
-x1 = torch.randn(1,40,64,64)
-x2 = torch.randn(1,80,32,32)
-x3 = torch.randn(1,160,16,16)
-unet_model = UNet(n_classes=4, bilinear=False)
-unet_model(x1,x2,x3)
-logits = unet_model(x1,x2,x3)
-print(logits.shape)
+
 
