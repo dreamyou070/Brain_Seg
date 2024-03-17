@@ -82,8 +82,9 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
 
             break
     segmentation_model.train()
-    class0_IOU = values[0, 0] / (values[0, 0] + values[0, 1] + values[0, 2] + values[0, 3])
-    class1_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
-    class2_IOU = values[2, 2] / (values[2, 0] + values[2, 1] + values[2, 2] + values[2, 3])
-    class3_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
-    return values, class0_IOU, class1_IOU, class2_IOU, class3_IOU, mask_pred_argmax.squeeze()
+    #class0_IOU = values[0, 0] / (values[0, 0] + values[0, 1] + values[0, 2] + values[0, 3])
+    #class1_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
+    #class2_IOU = values[2, 2] / (values[2, 0] + values[2, 1] + values[2, 2] + values[2, 3])
+    #class3_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
+    #return values, class0_IOU, class1_IOU, class2_IOU, class3_IOU, mask_pred_argmax.squeeze()
+    return values, mask_pred_argmax.squeeze()

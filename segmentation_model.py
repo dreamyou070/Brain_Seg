@@ -174,14 +174,10 @@ def main(args):
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
         from utils.evaluate import calculate_IOU
-        IOU_keras, class0_IOU, class1_IOU, class2_IOU, class3_IOU, pred = calculate_IOU(segmentation_model, test_dataloader,
+        IOU_keras, pred = calculate_IOU(segmentation_model, test_dataloader,
                                                                                   accelerator.device, text_encoder, unet, vae, controller, weight_dtype,
                                                                                   position_embedder, args)
         print(f'IOU_keras = {IOU_keras}')
-        print(f'class0_IOU = {class0_IOU}')
-        print(f'class1_IOU = {class1_IOU}')
-        print(f'class2_IOU = {class2_IOU}')
-        print(f'class3_IOU = {class3_IOU}')
         import matplotlib.pyplot as plt
         img_base_dir = os.path.join(args.output_dir, 'inference')
         os.makedirs(img_base_dir, exist_ok = True)
