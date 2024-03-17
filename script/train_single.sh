@@ -13,7 +13,7 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_config \
  --main_process_port $port_number ../train_single.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --network_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/models/epoch-000004.safetensors" \
- --position_embedder_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/position_embedder_4.safetensors" \
+ --position_embedder_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/position_embedder/position_embedder_4.safetensors" \
  --train_unet --train_text_encoder --start_epoch 4 --max_train_epochs 96 \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
  --data_path "/home/dreamyou070/MyData/anomaly_detection/medical/brain/${benchmark}" \
