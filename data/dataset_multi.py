@@ -87,6 +87,7 @@ class TrainDataset_Multi(Dataset):
         image_paths, gt_paths = [], []
         folders = os.listdir(self.root_dir)
         for folder in folders :
+            print(f'dataset, folder = {folder}')
             if folder == 'anormal' :
                 folder_dir = os.path.join(self.root_dir, folder)
                 rgb_folder = os.path.join(folder_dir, 'xray')
