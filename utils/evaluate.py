@@ -82,6 +82,7 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
     segmentation_model.train()
 
     values = np.array(IOU_keras.get_weights()).reshape(4,4)
+    print(f'values = {values}')
     class0_IOU = values[0, 0] / (values[0, 0] + values[0, 1] + values[0, 2] + values[0, 3])
     class1_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
     class2_IOU = values[2, 2] / (values[2, 0] + values[2, 1] + values[2, 2] + values[2, 3])
