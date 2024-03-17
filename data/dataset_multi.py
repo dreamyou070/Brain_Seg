@@ -87,14 +87,15 @@ class TrainDataset_Multi(Dataset):
         image_paths, gt_paths = [], []
         folders = os.listdir(self.root_dir)
         for folder in folders :
-            folder_dir = os.path.join(self.root_dir, folder)
-            rgb_folder = os.path.join(folder_dir, 'xray')
-            gt_folder = os.path.join(folder_dir, 'gt_npy')
-            images = os.listdir(rgb_folder)
-            for image in images :
-                name, ext = os.path.splitext(image)
-                image_paths.append(os.path.join(rgb_folder, image))
-                gt_paths.append(os.path.join(gt_folder, f'{name}.npy'))
+            if folder == 'anormal' :
+                folder_dir = os.path.join(self.root_dir, folder)
+                rgb_folder = os.path.join(folder_dir, 'xray')
+                gt_folder = os.path.join(folder_dir, 'gt_npy_64')
+                images = os.listdir(rgb_folder)
+                for image in images :
+                    name, ext = os.path.splitext(image)
+                    image_paths.append(os.path.join(rgb_folder, image))
+                    gt_paths.append(os.path.join(gt_folder, f'{name}.npy'))
 
         self.resize_shape = resize_shape
         self.tokenizer = tokenizer
@@ -144,13 +145,11 @@ class TrainDataset_Multi(Dataset):
         gt_array = np.load(gt_path)  # (240,240)
 
         # (1) 64
-        base_gt = torch.zeros((self.latent_res * self.latent_res, 4))
-        gt = np.array(Image.fromarray(gt_array.astype(np.uint8)).resize((self.latent_res,self.latent_res))).astype(np.uint8)
-        gt = torch.from_numpy(to_categorical(gt))  # [240,240,4]
-        if gt.dim() == 2: gt = gt.unsqueeze(0)
+        base_gt = torch.zeros((self.latent_res , self.latent_res, 4))
+        gt = to_categorical(gt_array)
         h, w, c = gt.shape
-        gt = gt.view(-1, c)
-        base_gt[:, :c] = gt
+        base_gt[:, :, :c] = gt # [64,64,c]
+        base_gt = torch.from_numpy(base_gt)
 
         # [3] caption
         input_ids, attention_mask = self.get_input_ids(self.caption)  # input_ids = [77]

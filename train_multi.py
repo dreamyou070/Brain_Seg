@@ -123,7 +123,7 @@ def main(args):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             # ------------------------------------------------------------------------------------------------------------
             image = batch['image'].to(dtype=weight_dtype)           # 1,3, 512,512
-            gt = batch['gt'].to(dtype=weight_dtype).squeeze()       # 1,64*64, 4
+            gt = batch['gt'].to(dtype=weight_dtype).squeeze()       # 64, 64, 4
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):

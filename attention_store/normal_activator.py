@@ -40,13 +40,13 @@ class NormalActivator(nn.Module):
                                        gt,         # [64*64, 4]
                                        do_normal_activating=True):
         attn_score = attn_score.squeeze()
-        gt = gt.squeeze() # [pix_num, c]
+        gt = gt.squeeze() # [res,res, c]
 
         seq_len = attn_score.shape[-1]
         for seq_idx in range(seq_len) :
             attn = attn_score[:, :, seq_idx].squeeze()     # [head,pix_num]
             head = attn.shape[0]
-            attn_gt = gt[:,seq_idx].squeeze()
+            attn_gt = gt[:,:, seq_idx].squeeze().flatten() # [pix_num]
             attn_gt = attn_gt.unsqueeze(0).repeat(head, 1) # [head, pix_num]
             total_score = torch.ones_like(attn_gt).to(attn.device)
             attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2) # head, pix_num -> attention should be big
@@ -93,12 +93,12 @@ class NormalActivator(nn.Module):
     def collect_anomal_map_loss_multi(self, attn_score, gt):
 
         attn_score = attn_score.squeeze() # [8,64*64,4]
-        gt = gt.squeeze()                 # [64*64,4]
+        gt = gt.squeeze()                 # [64,64,4]
         seq_len = attn_score.shape[-1]
         for seq_idx in range(seq_len):
             attn = attn_score[:, :, seq_idx].squeeze()  # head, pix_num
             head = attn.shape[0]
-            attn_gt = gt[:, seq_idx].squeeze().flatten()  # pix_num
+            attn_gt = gt[:, :,seq_idx].squeeze().flatten()  # pix_num
             attn_gt = attn_gt.unsqueeze(0).repeat(head, 1)   # head, pix_num
             map_loss = self.loss_l2(attn.float(), attn_gt.float()).mean(dim=0)
             self.anomal_map_loss.append(map_loss)

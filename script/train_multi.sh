@@ -7,7 +7,7 @@ benchmark="BraTS2020_Segmentation_multisegment"
 trigger_word='necrotic, ederma, tumor'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="5_multi_segmentation_BraTS2020_high_res"
+file_name="5_multi_segmentation_BraTS2020_only_anomal"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train_multi.py --log_with wandb \
@@ -22,4 +22,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --do_attn_loss --attn_loss_weight 1.0 --do_cls_train --normal_weight 1 \
- --resize_shape 1024 --latent_res 128
+ --resize_shape 512 --latent_res 64
