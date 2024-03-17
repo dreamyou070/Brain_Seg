@@ -87,7 +87,6 @@ class TrainDataset_Multi(Dataset):
         image_paths, gt_paths = [], []
         folders = os.listdir(self.root_dir)
         for folder in folders :
-            print(f'dataset, folder = {folder}')
             if folder == 'anomal' :
                 folder_dir = os.path.join(self.root_dir, folder)
                 rgb_folder = os.path.join(folder_dir, 'xray')
@@ -146,7 +145,7 @@ class TrainDataset_Multi(Dataset):
         gt_array = np.load(gt_path)  # (240,240)
 
         # (1) 64
-        base_gt = torch.zeros((self.latent_res , self.latent_res, 4))
+        base_gt = np.zeros((self.latent_res , self.latent_res, 4))
         gt = to_categorical(gt_array)
         h, w, c = gt.shape
         base_gt[:, :, :c] = gt # [64,64,c]

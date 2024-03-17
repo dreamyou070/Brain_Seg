@@ -52,10 +52,7 @@ def main():
 """
 def main() :
 
-    file = r'D:/medical/brain/data/BraTS2020_Segmentation_multisegment/train/anomal/gt_npy_64/sample095_118.npy' # also 1 ...
-    arr = np.load(file)
-    unique_num = np.unique(arr)
-    print(unique_num)
+    a = np.zeros((64,64, 4))
 
 
 
