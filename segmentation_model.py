@@ -175,7 +175,7 @@ def main(args):
         # [7] evaluate
         from utils.evaluate import calculate_IOU
         IOU_keras, class0_IOU, class1_IOU, class2_IOU, class3_IOU, pred = calculate_IOU(segmentation_model, test_dataloader,
-                                                                                  device, text_encoder, unet, vae, controller, weight_dtype,
+                                                                                  accelerator.device, text_encoder, unet, vae, controller, weight_dtype,
                                                                                   position_embedder, args)
         print(f'IOU_keras = {IOU_keras}')
         print(f'class0_IOU = {class0_IOU}')
