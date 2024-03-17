@@ -72,19 +72,17 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
             # [1] pred
             mask_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
             mask_pred = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy() # 1,64,64,4
-            mask_pred_argmax = np.argmax(mask_pred, axis=3) # 1,64,64
+            mask_pred_argmax = np.argmax(mask_pred, axis=3).flatten()
             # [2] real (1,4,64,64)
-            mask_true = mask_true.permute(0, 2, 3, 1).detach().cpu().numpy()
+            mask_true = mask_true.permute(0, 2, 3, 1).detach().cpu().numpy().flatten()
             # [3] IoU
-            IOU_keras = MeanIoU(num_classes=4)
-            IOU_keras.update_state(mask_pred_argmax, mask_true)
+            from sklearn.metrics import confusion_matrix
+            values = confusion_matrix(mask_true,mask_pred_argmax)
+
             break
     segmentation_model.train()
-
-    values = np.array(IOU_keras.get_weights()).reshape(4,4)
-    print(f'values = {values}')
     class0_IOU = values[0, 0] / (values[0, 0] + values[0, 1] + values[0, 2] + values[0, 3])
     class1_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
     class2_IOU = values[2, 2] / (values[2, 0] + values[2, 1] + values[2, 2] + values[2, 3])
     class3_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
-    return IOU_keras, class0_IOU, class1_IOU, class2_IOU, class3_IOU, mask_pred_argmax.squeeze()
+    return values, class0_IOU, class1_IOU, class2_IOU, class3_IOU, mask_pred_argmax.squeeze()
