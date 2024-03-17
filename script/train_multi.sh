@@ -1,13 +1,13 @@
 # !/bin/bash
 #
-port_number=50077
+port_number=50088
 category="medical"
 obj_name="brain"
 benchmark="BraTS2020_Segmentation_multisegment"
 trigger_word='necrotic, ederma, tumor'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="5_multi_segmentation_BraTS2020_only_anomal"
+file_name="6_multi_segmentation_BraTS2020_only_anomal_use_crossentropyloss"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train_multi.py --log_with wandb \

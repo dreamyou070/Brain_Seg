@@ -52,6 +52,17 @@ class NormalActivator(nn.Module):
             attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2) # head, pix_num -> attention should be big
             self.attention_loss_multi.append(attn_loss)
 
+    def collect_anomal_map_loss_multi_crossentropy(self,
+                                                   attn_score, # [8, 64*64, 4]
+                                                   gt_vector,         # [64*64]
+                                                   do_normal_activating=True):
+        attn_score = attn_score.squeeze()   # [8,res*res,4]
+        attn_score = attn_score.mean(dim=0) # [res*res,4]
+        gt_vector = gt_vector.squeeze() # [res*res]
+        crossentropy_loss_fn = nn.CrossEntropyLoss()
+        loss = crossentropy_loss_fn (attn_score, gt_vector)
+        self.anomal_map_loss.append(loss)
+
     def collect_attention_scores_single(self,
                                         attn_score,
                                         anomal_position_vector,

@@ -74,7 +74,8 @@ class TrainDataset_Multi(Dataset):
                  resize_shape=(240,240),
                  tokenizer=None,
                  caption : str = "necrotic, edema, tumor",
-                 latent_res : int = 64) :
+                 latent_res : int = 64,
+                 num_classes = 4) :
 
         CLASSES = ['non', 'necrotic', 'edema', 'enhancing tumor']
         PALETTE = torch.tensor([ (0, 0, 0),
@@ -105,6 +106,7 @@ class TrainDataset_Multi(Dataset):
         self.image_paths = image_paths
         self.gt_paths = gt_paths
         self.latent_res = latent_res
+        self.num_classes = num_classes
 
     def __len__(self):
         return len(self.image_paths)
@@ -143,9 +145,10 @@ class TrainDataset_Multi(Dataset):
         # [2] gt dir
         gt_path = self.gt_paths[idx]
         gt_array = np.load(gt_path)  # (240,240)
+        gt_vector = torch.from_numpy(gt_array).flatten()
 
         # (1) 64
-        base_gt = np.zeros((self.latent_res , self.latent_res, 4))
+        base_gt = np.zeros((self.latent_res , self.latent_res, self.num_classes))
         gt = to_categorical(gt_array)
         h, w, c = gt.shape
         base_gt[:, :, :c] = gt # [64,64,c]
@@ -156,4 +159,5 @@ class TrainDataset_Multi(Dataset):
 
         return {'image': self.transform(img), # [3,512,512]
                 "gt" : base_gt,                    # [64*64, 4]
+                "gt_vector" : gt_vector,
                 "input_ids" : input_ids}

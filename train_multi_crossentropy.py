@@ -122,9 +122,8 @@ def main(args):
                 # CLS, nec, edrma, tumor
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             # ------------------------------------------------------------------------------------------------------------
-            image = batch['image'].to(dtype=weight_dtype)           # 1,3, 512,512
-            gt = batch['gt'].to(dtype=weight_dtype).squeeze()       # 64, 64, 4
-            gt_vector = batch['gt_vector'].to(dtype=weight_dtype).squeeze()  # 1, 64*64
+            image = batch['image'].to(dtype=weight_dtype)                        # 1,3, 512,512
+            gt_vector = batch['gt_vector'].to(dtype=weight_dtype).squeeze()      # 1, 64*64
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
@@ -144,10 +143,10 @@ def main(args):
             attention_scores = torch.baddbmm(torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
                                                          device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
             attn = attention_scores.softmax(dim=-1)[:, :, :4]
-            normal_activator.collect_attention_scores_multi(attn, gt)
 
-            # ------------------------------------------------------------------------------------------
-            normal_activator.collect_anomal_map_loss_multi_crossentropy(attn, gt_vector)
+
+            normal_activator.collect_attention_scores_multi(attn, gt)
+            normal_activator.collect_anomal_map_loss_multi(attn, gt)
 
             # [5] backprop
             if args.do_attn_loss:
