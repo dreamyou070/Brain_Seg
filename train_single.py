@@ -57,7 +57,11 @@ def main(args):
     print(f'\n step 7. loss function')
     loss_focal = FocalLoss()
     loss_l2 = torch.nn.modules.loss.MSELoss(reduction='none')
-    normal_activator = NormalActivator(loss_focal, loss_l2, args.use_focal_loss)
+    normal_activator = NormalActivator(loss_focal, loss_l2,
+                                       multiclassification_loss_fn= None,
+                                       use_focal_loss=args.use_focal_loss,
+                                       class_weight=None)
+
 
     print(f'\n step 8. model to device')
     if args.use_position_embedder :
