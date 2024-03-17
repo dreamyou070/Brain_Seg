@@ -23,33 +23,23 @@ def call_dataset(args) :
 
     else :
         root_dir = os.path.join(args.data_path, f'train')
-        from data.dataset_multi import TrainDataset_Multi
-        """
-        nectoric_word = ['necrotic']
-        ederma_word = ['ederma']
-        tumor_word = ['tumor', 'enhancing tumor']
-        trigger_word = args.trigger_word.split(',')
-        caption = ''
-        for c in trigger_word:
-            c = c.strip()
-            if c in nectoric_word:
-                target = 'n '
-            elif c in ederma_word:
-                target = 'e '
-            else:
-                target = 't '
-            caption += target
-        caption = caption.strip()
-        print(f'caption = {caption}')
-        """
-        dataset = TrainDataset_Multi(root_dir=root_dir,
-                                     resize_shape=[args.resize_shape, args.resize_shape],
-                                     tokenizer=tokenizer,
-                                     caption=args.trigger_word,
-                                     latent_res=args.latent_res,)
-    dataloader = torch.utils.data.DataLoader(dataset,
+        test_root_dir = os.path.join(args.data_path, f'val')
+        from data.dataset_multi import TrainDataset_Multi, TestDataset_Multi
+        train_dataset = TrainDataset_Multi(root_dir=root_dir,
+                                           resize_shape=[args.resize_shape, args.resize_shape],
+                                           tokenizer=tokenizer,
+                                           caption=args.trigger_word,
+                                           latent_res=args.latent_res,)
+        test_dataset = TestDataset_Multi(root_dir=test_root_dir,
+                                         resize_shape=[args.resize_shape, args.resize_shape],
+                                         tokenizer=tokenizer,
+                                         caption=args.trigger_word,
+                                         latent_res=args.latent_res, )
+    train_dataloader = torch.utils.data.DataLoader(train_dataset,
+                                             batch_size=args.batch_size,
+                                             shuffle=True)
+    test_dataloader = torch.utils.data.DataLoader(test_dataset,
                                              batch_size=args.batch_size,
                                              shuffle=True)
 
-    return dataloader
-
+    return train_dataloader, test_dataloader

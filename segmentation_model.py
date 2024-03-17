@@ -35,7 +35,8 @@ def main(args):
     if args.seed is None :
         args.seed = random.randint(0, 2 ** 32)
     set_seed(args.seed)
-    train_dataloader = call_dataset(args)
+    train_dataloader, test_dataloader = call_dataset(args)
+
 
     print(f'\n step 3. preparing accelerator')
     accelerator = prepare_accelerator(args)
@@ -44,8 +45,6 @@ def main(args):
     print(f'\n step 4. model ')
     weight_dtype, save_dtype = prepare_dtype(args)
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
-
-
 
     print(f'\n step 7. loss function')
     loss_focal = FocalLoss()
@@ -91,8 +90,8 @@ def main(args):
     optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params)
     lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
     segmentation_model = transform_models_if_DDP([segmentation_model])[0]
-    segmentation_model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(segmentation_model, optimizer,
-                                                                                        train_dataloader, lr_scheduler)
+    segmentation_model, optimizer, train_dataloader, test_dataloader, lr_scheduler = accelerator.prepare(segmentation_model, optimizer,
+                                                                                        train_dataloader, test_dataloader, lr_scheduler)
 
     print(f'\n step 10. Training !')
     progress_bar = tqdm(range(args.max_train_steps), smoothing=0,
@@ -170,6 +169,18 @@ def main(args):
             p_save_dir = os.path.join(segmentation_base_save_dir,
                                       f'segmentation_{epoch + 1}.safetensors')
             pe_model_save(accelerator.unwrap_model(segmentation_model), save_dtype, p_save_dir)
+
+        # ----------------------------------------------------------------------------------------------------------- #
+        # [7] evaluate
+        from utils.evaluate import calculate_IOU
+        IOU_keras, class0_IOU, class1_IOU, class2_IOU, class3_IOU = calculate_IOU(segmentation_model, test_dataloader,
+                                                                                  device, text_encoder, unet, vae, controller, weight_dtype,
+                                                                                  position_embedder, args)
+        print(f'IOU_keras = {IOU_keras}')
+        print(f'class0_IOU = {class0_IOU}')
+        print(f'class1_IOU = {class1_IOU}')
+        print(f'class2_IOU = {class2_IOU}')
+        print(f'class3_IOU = {class3_IOU}')
     accelerator.end_training()
 
 
