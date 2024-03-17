@@ -104,10 +104,11 @@ class Multiclass_FocalLoss(nn.Module):
         logpt = F.log_softmax(input, dim=1)
         pt = torch.exp(logpt)
         logpt = (1-pt)**self.gamma * logpt
+
+        print(f'logpt = {logpt.device}')
+        print(f'target = {target.device}')
         # -----
         loss = F.nll_loss(logpt, target.type(torch.LongTensor), self.weight)
-
-
         return loss
 
 
