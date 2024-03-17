@@ -140,6 +140,7 @@ def main(args):
                 key_list.append(key_dict[layer][0])  # head, pix_num, dim
             # [1] local
             query = torch.cat(query_list, dim=-1)  # head, pix_num, long_dim
+            print(f'query (8, 64*64, 280) = {query.shape}')
             key = torch.cat(key_list, dim=-1).squeeze()  # head, 77, long_dim
             attention_scores = torch.baddbmm(torch.empty(query.shape[0], query.shape[1], key.shape[1], dtype=query.dtype,
                                                          device=query.device), query, key.transpose(-1, -2), beta=0, )
