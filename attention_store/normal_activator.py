@@ -9,7 +9,9 @@ def passing_normalize_argument(args):
 
 class NormalActivator(nn.Module):
 
-    def __init__(self, loss_focal, loss_l2, multiclassification_loss_fn, use_focal_loss):
+    def __init__(self, loss_focal, loss_l2, multiclassification_loss_fn,
+                 use_focal_loss,
+                 class_weight):
         super(NormalActivator, self).__init__()
 
 
@@ -35,6 +37,7 @@ class NormalActivator(nn.Module):
         self.resized_attn_scores = []
         self.noise_prediction_loss = []
         self.resized_self_attn_scores = []
+        self.class_weight = class_weight
 
     def collect_attention_scores_multi(self,
                                        attn_score, # [8, 64*64, 4]
@@ -51,6 +54,8 @@ class NormalActivator(nn.Module):
             attn_gt = attn_gt.unsqueeze(0).repeat(head, 1) # [head, pix_num]
             total_score = torch.ones_like(attn_gt).to(attn.device)
             attn_loss = (1 - (attn * (attn_gt/total_score)) ** 2) # head, pix_num -> attention should be big
+            if argument.do_class_weight :
+                attn_loss = float(self.class_weight[seq_idx]) * attn_loss
             self.attention_loss_multi.append(attn_loss)
 
     def collect_anomal_map_loss_multi_crossentropy(self,

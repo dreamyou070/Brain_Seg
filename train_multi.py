@@ -63,7 +63,20 @@ def main(args):
     if args.multiclassification_focal_loss :
         multiclassification_loss_fn = Multiclass_FocalLoss()
 
-    normal_activator = NormalActivator(loss_focal, loss_l2, multiclassification_loss_fn, args.use_focal_loss)
+    print(f' (7.2) call class weight')
+    import numpy as np
+    class_weight_file = 'data/class_weights.npy'
+    weight = np.load(class_weight_file)
+    total_weight = weight.sum()
+    weight = weight / total_weight
+    class_weight = dict(enumerate(weight))
+    normal_activator = NormalActivator(loss_focal,
+                                       loss_l2,
+                                       multiclassification_loss_fn,
+                                       args.use_focal_loss,
+                                       class_weight)
+
+
 
     print(f'\n step 8. model to device')
     if args.use_position_embedder  :
@@ -296,6 +309,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_single", action='store_true')
     parser.add_argument("--resize_shape", type=int, default=512)
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
+    parser.add_argument("--do_class_weight", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
