@@ -77,12 +77,16 @@ def inference(latent,
     key = torch.cat(key_list, dim=-1).squeeze()  # head, 77, long_dim
     attention_scores = torch.baddbmm(torch.empty(query.shape[0], query.shape[1], key.shape[1], dtype=query.dtype,
                     device=query.device), query, key.transpose(-1, -2),beta=0, )
-    attn_score = attention_scores.softmax(dim=-1)[:, :, :4]
+    cls_score = attention_scores.softmax(dim=-1)[:, :, 0].squeeze()
+    cls_score = cls_score.mean(dim=0).unsqueeze(0)
+    cls_score = cls_score.view(64, 64).cpu().detach().numpy() * 255
+    cls_pil = Image.fromarray(cls_score.astype(np.uint8)).resize((org_h, org_w))
+
     anomal_map = attention_scores.softmax(dim=-1)[:, :, 1:4] # 8, pix_num
     anomal_map = anomal_map.mean(dim = 0)
     anomal_map = anomal_map.view(64, 64, 3).cpu().detach().numpy()
     anomal_pil = Image.fromarray((anomal_map * 255).astype(np.uint8)).resize((org_h, org_w))
-    return anomal_pil
+    return cls_pil, anomal_pil
 
 
 
@@ -218,7 +222,7 @@ def main(args):
                                     latent = position_embedder.patch_embed(image.to(dtype=weight_dtype))
                                 else:
                                     latent = vae.encode(image.to(dtype=weight_dtype)).latent_dist.sample() * 0.18215
-                            anomal_pil = inference(latent,
+                            cls_pil , anomal_pil = inference(latent,
                                                                                      tokenizer, text_encoder, unet,
                                                                                      controller, normal_activator,
                                                                                      position_embedder,
@@ -227,6 +231,7 @@ def main(args):
                                                                                      thred, global_network)
 
                             anomal_pil.save(os.path.join(save_base_folder, f'{name}_anomal.png'))
+                            cls_pil.save(os.path.join(save_base_folder, f'{name}_cls.png'))
                     gt_dir = os.path.join(gt_folder, rgb_img)
                     Image.open(gt_dir).convert('RGB').save(os.path.join(save_base_folder, f'{name}_gt.png'))
                     controller.reset()
