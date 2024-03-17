@@ -92,7 +92,7 @@ class Multiclass_FocalLoss(nn.Module):
     Multi-class Focal loss implementation
     '''
     def __init__(self, gamma=2, weight=None):
-        super(FocalLoss, self).__init__()
+        super(Multiclass_FocalLoss, self).__init__()
         self.gamma = gamma
         self.weight = weight
 
