@@ -153,6 +153,7 @@ class TrainDataset_Multi(Dataset):
         h, w, c = gt.shape
         base_gt[:, :, :c] = gt # [64,64,c]
         base_gt = torch.from_numpy(base_gt)
+        base_gt = base_gt.permute(2,0,1) # [c,64,64]
 
         # [3] caption
         input_ids, attention_mask = self.get_input_ids(self.caption)  # input_ids = [77]
