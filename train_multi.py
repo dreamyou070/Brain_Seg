@@ -59,7 +59,8 @@ def main(args):
     print(f'\n step 7. loss function')
     loss_focal = FocalLoss()
     loss_l2 = torch.nn.modules.loss.MSELoss(reduction='none')
-    normal_activator = NormalActivator(loss_focal, loss_l2, args.use_focal_loss)
+    crossentropy_loss_fn = nn.CrossEntropyLoss()
+    normal_activator = NormalActivator(loss_focal, loss_l2, crossentropy_loss_fn, args.use_focal_loss)
 
     print(f'\n step 8. model to device')
     if args.use_position_embedder  :
