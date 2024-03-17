@@ -106,7 +106,7 @@ def main(args):
             device = accelerator.device
             loss = torch.tensor(0.0, dtype=weight_dtype, device=accelerator.device)
             loss_dict = {}
-            with torch.no_grad(True):
+            with torch.no_grad():
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
                 if args.text_truncate :
                     encoder_hidden_states = encoder_hidden_states[:,:2,:]
