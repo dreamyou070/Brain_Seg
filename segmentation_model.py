@@ -104,7 +104,7 @@ def main(args):
         segmentation_model.train()
         epoch_loss_total = 0
         accelerator.print(f"\nepoch {epoch + 1}/{args.start_epoch + args.max_train_epochs}")
-        """
+        
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
             loss_dict = {}
@@ -169,7 +169,7 @@ def main(args):
             p_save_dir = os.path.join(segmentation_base_save_dir,
                                       f'segmentation_{epoch + 1}.safetensors')
             pe_model_save(accelerator.unwrap_model(segmentation_model), save_dtype, p_save_dir)
-        """
+
 
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
@@ -179,11 +179,11 @@ def main(args):
                                                                                   position_embedder, args)
         print(f'IOU_keras = {IOU_keras}')
         import matplotlib.pyplot as plt
-        img_base_dir = os.path.join(args.output_dir, 'inference')
-        os.makedirs(img_base_dir, exist_ok = True)
-        plt.imshow(pred, cmap = 'jet')
-        plt.savefig(os.path.join(img_base_dir, f'epoch_{epoch+1}.jpg'))
-        plt.clear()
+        #img_base_dir = os.path.join(args.output_dir, 'inference')
+        #os.makedirs(img_base_dir, exist_ok = True)
+        #plt.imshow(pred, cmap = 'jet')
+        #plt.savefig(os.path.join(img_base_dir, f'epoch_{epoch+1}.jpg'))
+        #plt.clear()
 
     accelerator.end_training()
 
