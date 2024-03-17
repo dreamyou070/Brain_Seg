@@ -72,7 +72,7 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
             # [1] pred
             mask_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
             mask_pred = mask_pred.permute(0, 2, 3, 1).detach().numpy() # 1,64,64,4
-            mask_pred_argmax = np.argmax(mask_pred, axis=3)
+            mask_pred_argmax = np.argmax(mask_pred, axis=3) # 1,64,64
             # [2] real (1,4,64,64)
             mask_true = mask_true.permute(0, 2, 3, 1).detach().numpy()
             # [3] IoU
@@ -86,4 +86,4 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
     class1_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
     class2_IOU = values[2, 2] / (values[2, 0] + values[2, 1] + values[2, 2] + values[2, 3])
     class3_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
-    return IOU_keras, class0_IOU, class1_IOU, class2_IOU, class3_IOU
+    return IOU_keras, class0_IOU, class1_IOU, class2_IOU, class3_IOU, mask_pred_argmax.squeeze()
