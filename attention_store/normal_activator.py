@@ -61,6 +61,9 @@ class NormalActivator(nn.Module):
         attn_score = attn_score.mean(dim=0) # [res*res,4]
         gt_vector = gt_vector.squeeze().type(torch.LongTensor) # [res*res]
 
+        print(f'attn_score = {attn_score.device}')
+        print(f'gt_vector = {gt_vector.device}')
+
         loss = self.crossentropy_loss_fn(attn_score, gt_vector)
         self.anomal_map_loss.append(loss)
 
