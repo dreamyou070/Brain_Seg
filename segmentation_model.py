@@ -12,7 +12,7 @@ from utils.attention_control import passing_argument, register_attention_control
 from utils.accelerator_utils import prepare_accelerator
 from utils.optimizer_utils import get_optimizer, get_scheduler_fix
 from utils.model_utils import pe_model_save, te_model_save
-from utils.utils_loss import FocalLoss
+from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
 from data.prepare_dataset import call_dataset
 from model import call_model_package
 from attention_store.normal_activator import passing_normalize_argument
@@ -48,6 +48,7 @@ def main(args):
 
     print(f'\n step 7. loss function')
     loss_focal = FocalLoss()
+    loss_multi_focal = Multiclass_FocalLoss()
     loss_l2 = torch.nn.modules.loss.MSELoss(reduction='none')
     criterion = nn.CrossEntropyLoss()
     normal_activator = NormalActivator(loss_focal, loss_l2,
@@ -133,6 +134,9 @@ def main(args):
             masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16]) # 1,4,64,64
             # target = true mask
             loss = criterion(masks_pred, true_masks)
+            if args.multiclassification_focal_loss :
+                loss = loss_multi_focal(masks_pred, true_masks)
+
             loss_dict['cross_entropy_loss'] = loss.item()
             loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
                               true_masks,
@@ -174,10 +178,15 @@ def main(args):
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
         from utils.evaluate import calculate_IOU
-        IOU_keras, pred = calculate_IOU(segmentation_model, test_dataloader,
-                                                                                  accelerator.device, text_encoder, unet, vae, controller, weight_dtype,
-                                                                                  position_embedder, args)
-        print(f'IOU_keras = {IOU_keras}')
+        IOU_dict, pred = calculate_IOU(segmentation_model, test_dataloader, accelerator.device, text_encoder, unet, vae, controller, weight_dtype,
+                                        position_embedder, args)
+        print(f'IOU_keras = {IOU_dict}')
+        # saving
+        score_save_dir = os.path.join(args.output_dir, 'score.txt')
+        with open(score_save_dir, 'a') as f :
+            for k in IOU_dict :
+                f.write(f'class {k} = {IOU_dict[k]} ')
+            f.write(f'\n')
         import matplotlib.pyplot as plt
         #img_base_dir = os.path.join(args.output_dir, 'inference')
         #os.makedirs(img_base_dir, exist_ok = True)

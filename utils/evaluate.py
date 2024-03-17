@@ -49,42 +49,48 @@ def calculate_IOU(segmentation_model, dataloader, device, text_encoder, unet, va
     num_val_batches = len(dataloader)
     # iterate over the validation set
     with torch.no_grad():
+        global_num = 0
+        y_true_list, y_pred_list = [], []
         for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch',
                           leave=False):
-            encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
-            if args.text_truncate:
-                encoder_hidden_states = encoder_hidden_states[:, :2, :]
-            image, mask_true_vector = batch['image'].to(dtype=weight_dtype), batch['gt_vector'].to(dtype=weight_dtype)
+            if global_num < 100 :
+                encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
+                if args.text_truncate:
+                    encoder_hidden_states = encoder_hidden_states[:, :2, :]
+                image, mask_true_vector = batch['image'].to(dtype=weight_dtype), batch['gt_vector'].to(dtype=weight_dtype)
 
-            latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
-            unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
-                 noise_type=position_embedder)
-            query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
-            controller.reset()
-            q_dict = {}
-            for layer in args.trg_layer_list:
-                query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                head, pix_num, dim = query.shape
-                res = int(pix_num ** 0.5)
-                query = query.view(head, res, res, dim).permute(0, 3, 1, 2).mean(dim=0)
-                q_dict[res] = query.unsqueeze(0)
-            #######################################################################################################################
-            # segmentation model
-            # [1] pred
-            mask_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
-            mask_pred = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy() # 1,64,64,4
-            mask_pred_argmax = np.argmax(mask_pred, axis=3).flatten()
-            # [2] real (1,4,64,64)
-            mask_true = mask_true_vector.detach().cpu().numpy().flatten()
-            # [3] IoU
-            from sklearn.metrics import confusion_matrix
-            values = confusion_matrix(mask_true,mask_pred_argmax)
-
-            break
+                latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
+                unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
+                     noise_type=position_embedder)
+                query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
+                controller.reset()
+                q_dict = {}
+                for layer in args.trg_layer_list:
+                    query = query_dict[layer][0].squeeze()  # head, pix_num, dim
+                    head, pix_num, dim = query.shape
+                    res = int(pix_num ** 0.5)
+                    query = query.view(head, res, res, dim).permute(0, 3, 1, 2).mean(dim=0)
+                    q_dict[res] = query.unsqueeze(0)
+                #######################################################################################################################
+                # segmentation model
+                # [1] pred
+                mask_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
+                mask_pred = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy() # 1,64,64,4
+                mask_pred_argmax = np.argmax(mask_pred, axis=3).flatten()
+                y_pred_list.append(mask_pred_argmax)
+                # [2] real (1,4,64,64)
+                mask_true = mask_true_vector.detach().cpu().numpy().flatten()
+                y_true_list.append(mask_true)
+        y = torch.cat(y_true_list)
+        y_hat = torch.cat(y_pred_list)
+        from sklearn.metrics import confusion_matrix
+        score = confusion_matrix(y,y_hat)
+        actual_axis, pred_axis = score.shape
+        IOU_dict = {}
+        for actual_idx in range(actual_axis):
+            total_actual_num = score[actual_idx]
+            total_actual_num = sum(total_actual_num)
+            precision = score[actual_idx, actual_idx] / total_actual_num
+            IOU_dict[actual_idx] = precision
     segmentation_model.train()
-    #class0_IOU = values[0, 0] / (values[0, 0] + values[0, 1] + values[0, 2] + values[0, 3])
-    #class1_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
-    #class2_IOU = values[2, 2] / (values[2, 0] + values[2, 1] + values[2, 2] + values[2, 3])
-    #class3_IOU = values[1, 1] / (values[1, 0] + values[1, 1] + values[1, 2] + values[1, 3])
-    #return values, class0_IOU, class1_IOU, class2_IOU, class3_IOU, mask_pred_argmax.squeeze()
-    return values, mask_pred_argmax.squeeze()
+    return IOU_dict, mask_pred_argmax.squeeze()
