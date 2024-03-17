@@ -3,11 +3,11 @@
 port_number=50044
 category="medical"
 obj_name="brain"
-benchmark="BraTS2020_Segmentation_multisegment"
+benchmark="BraTS2020_Segmentation_class_1"
 trigger_word='brain'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="4_binary_segmentation_BraTS2020_text_truncate"
+file_name="10_class1_single_BraTS2020_text_truncate"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --main_process_port $port_number ../reconstruction_single.py \
