@@ -24,6 +24,7 @@ def call_dataset(args) :
     else :
         root_dir = os.path.join(args.data_path, f'train')
         from data.dataset_multi import TrainDataset_Multi
+        """
         nectoric_word = ['necrotic']
         ederma_word = ['ederma']
         tumor_word = ['tumor', 'enhancing tumor']
@@ -40,10 +41,11 @@ def call_dataset(args) :
             caption += target
         caption = caption.strip()
         print(f'caption = {caption}')
+        """
         dataset = TrainDataset_Multi(root_dir=root_dir,
                                      resize_shape=[args.resize_shape, args.resize_shape],
                                      tokenizer=tokenizer,
-                                     caption=caption,
+                                     caption=args.trigger_word,
                                      latent_res=args.latent_res,)
     dataloader = torch.utils.data.DataLoader(dataset,
                                              batch_size=args.batch_size,
