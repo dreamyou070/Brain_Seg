@@ -81,14 +81,15 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
                 #######################################################################################################################
                 # segmentation model
                 # [1] pred
-                mask_pred = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,64,64,4
-                mask_pred_argmax = np.argmax(mask_pred, axis=3).flatten()
+                mask_pred_ = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,64,64,4
+                mask_pred_argmax = np.argmax(mask_pred_, axis=3).flatten()
                 y_pred_list.append(mask_pred_argmax)
                 mask_true = true_mask_one_vector.detach().cpu().numpy().flatten()
                 y_true_list.append(mask_true)
 
                 # [2] dice coefficient
-                dice_coeff = 1-dice_loss(F.softmax(masks_pred, dim=1).float(),  # class 0 ~ 4 check best
+                from utils.dice_score import dice_loss
+                dice_coeff = 1-dice_loss(F.softmax(mask_pred, dim=1).float(),  # class 0 ~ 4 check best
                                           true_mask_one_hot_matrix,  # true_masks = [1,4,64,64] (one-hot_
                                           multiclass=True)
                 dice_coeff_list.append(dice_coeff)
