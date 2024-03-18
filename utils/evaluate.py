@@ -76,11 +76,16 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
                     res = int(pix_num ** 0.5)
                     query = query.view(head, res, res, dim).permute(0, 3, 1, 2).mean(dim=0)
                     q_dict[res] = query.unsqueeze(0)
-                mask_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
+                # segmentation model
+                if not args.segment_use_raw_latent:
+                    masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
+                if args.segment_use_raw_latent:
+                    masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
+
                 #######################################################################################################################
                 # segmentation model
                 # [1] pred
-                mask_pred_ = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,64,64,4
+                mask_pred_ = masks_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,64,64,4
                 mask_pred_argmax = np.argmax(mask_pred_, axis=3).flatten()
                 y_pred_list.append(torch.Tensor(mask_pred_argmax))
                 mask_true = true_mask_one_vector.detach().cpu().numpy().flatten()
@@ -88,7 +93,7 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
 
                 # [2] dice coefficient
                 from utils.dice_score import dice_loss
-                dice_coeff = 1-dice_loss(F.softmax(mask_pred, dim=1).float(),  # class 0 ~ 4 check best
+                dice_coeff = 1-dice_loss(F.softmax(masks_pred, dim=1).float(),  # class 0 ~ 4 check best
                                           true_mask_one_hot_matrix,  # true_masks = [1,4,64,64] (one-hot_
                                           multiclass=True)
                 dice_coeff_list.append(dice_coeff.detach().cpu())

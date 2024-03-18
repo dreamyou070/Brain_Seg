@@ -1,15 +1,15 @@
 # !/bin/bash
 #
-port_number=57171
+port_number=50661
 category="medical"
 obj_name="brain"
 benchmark="BraTS2020_Segmentation_multisegment"
 #trigger_word='necrotic, ederma, tumor'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="17_segmentation_model_multiclassification_focal_loss_change_diceloss_test_only_anomal"
+file_name="16_segmentation_model_multiclassification_focal_loss_change_diceloss_test_do_class_weight_segment_use_raw_latent"
 
-accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
+accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_config \
  --main_process_port $port_number ../segmentation_model.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --network_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/2_binary_segmentation_BraTS2020/models/epoch-000033.safetensors" \
@@ -24,6 +24,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --do_attn_loss --do_cls_train \
- --resize_shape 512 --latent_res 64 --multiclassification_focal_loss --multiclassification_focal_loss \
- --use_dice_anomal_loss
- #--do_class_weight --segment_use_raw_latent
+ --resize_shape 512 --latent_res 64 --multiclassification_focal_loss --multiclassification_focal_loss --do_class_weight --segment_use_raw_latent
