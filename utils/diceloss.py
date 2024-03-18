@@ -3,10 +3,11 @@ from typing import Optional, List
 import torch
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
-from ._functional import soft_dice_score, to_tensor
-from .constants import BINARY_MODE, MULTICLASS_MODE, MULTILABEL_MODE
+from _functional import soft_dice_score, to_tensor, soft_dice_score_class_weight
+from constants import BINARY_MODE, MULTICLASS_MODE, MULTILABEL_MODE
 
 __all__ = ["DiceLoss"]
+
 
 
 class DiceLoss(_Loss):
@@ -19,7 +20,7 @@ class DiceLoss(_Loss):
         smooth: float = 0.0,
         ignore_index: Optional[int] = None,
         eps: float = 1e-7,
-    ):
+        class_weight: Optional = None,):
         """Dice loss for image segmentation task.
         It supports binary, multiclass and multilabel cases
 
@@ -32,6 +33,7 @@ class DiceLoss(_Loss):
             ignore_index: Label that indicates ignored pixels (does not contribute to loss)
             eps: A small epsilon for numerical stability to avoid zero division error
                 (denominator will be always greater or equal to eps)
+            * class_weight: total data by weight
 
         Shape
              - **y_pred** - torch.Tensor of shape (N, C, H, W)
@@ -53,11 +55,11 @@ class DiceLoss(_Loss):
         self.eps = eps
         self.log_loss = log_loss
         self.ignore_index = ignore_index
+        self.class_weight = class_weight
 
     def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
 
         assert y_true.size(0) == y_pred.size(0)
-
         if self.from_logits:
             # Apply activations to get [0..1] class probabilities
             # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
@@ -103,7 +105,8 @@ class DiceLoss(_Loss):
                 y_pred = y_pred * mask
                 y_true = y_true * mask
 
-        scores = self.compute_score(y_pred, y_true.type_as(y_pred), smooth=self.smooth, eps=self.eps, dims=dims)
+        scores = self.compute_score(y_pred, y_true.type_as(y_pred), smooth=self.smooth, eps=self.eps, dims=dims,
+                                    class_weight = self.class_weight)
 
         if self.log_loss:
             loss = -torch.log(scores.clamp_min(self.eps))
@@ -126,5 +129,43 @@ class DiceLoss(_Loss):
     def aggregate_loss(self, loss):
         return loss.mean()
 
-    def compute_score(self, output, target, smooth=0.0, eps=1e-7, dims=None) -> torch.Tensor:
-        return soft_dice_score(output, target, smooth, eps, dims)
+    def compute_score(self, output, target, smooth=0.0, eps=1e-7, dims=None, class_weight=None) -> torch.Tensor:
+
+        if class_weight is not None :
+            return soft_dice_score_class_weight(output, target, smooth, eps, dims, class_weight)
+        else :
+            return soft_dice_score(output, target, smooth, eps, dims)
+
+"""
+dice_loss = DiceLoss(mode = 'multiclass',
+                     classes = [0,1,2,3],
+                     log_loss = True,
+                     from_logits = False,
+                     smooth = 0.0,
+                     ignore_index = None,
+                     eps = 1e-7,)
+y_true = torch.Tensor([[0,1,2],
+                       [3,1,2],
+                       [3,0,2]]).to(torch.int64)
+print(y_true.shape)
+
+y_pred = torch.randn((1,4,3,3))
+# [1]
+bs = y_true.size(0)
+num_classes = y_pred.size(1)
+dims = (0, 2)
+# [2]
+y_true = y_true.view(bs, -1)
+y_true = F.one_hot(y_true, num_classes)  # N,H*W -> N,H*W, C
+y_true = y_true.permute(0, 2, 1)  # N, C, H*W
+y_pred = y_pred.view(bs, num_classes, -1)
+# [3]
+y_true = y_true.view(bs, num_classes, -1)
+y_pred = y_pred.view(bs, num_classes, -1)
+# [4] scoring
+scores = soft_dice_score(y_pred,
+                         y_true.type_as(y_pred),
+                         smooth=0.0, eps=1e-7,
+                         dims=None)
+
+"""

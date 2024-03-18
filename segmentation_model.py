@@ -17,7 +17,8 @@ from data.prepare_dataset import call_dataset
 from model import call_model_package
 from attention_store.normal_activator import passing_normalize_argument
 from torch import nn
-from utils.dice_score import dice_loss
+#from utils.dice_score import dice_loss
+from utils.diceloss import DiceLoss
 import torch.nn.functional as F
 def main(args):
 
@@ -55,6 +56,17 @@ def main(args):
                                        multiclassification_loss_fn= criterion,
                                        use_focal_loss=args.use_focal_loss,
                                        class_weight=None)
+    class_weight = None
+    if args.do_class_weight :
+        class_weight = {0: 0.0027217850085457886, 1: 0.22609416133509747, 2: 0.17582554657020089, 3: 0.5953585070861559}
+    dice_loss_fn = DiceLoss(mode='multiclass',
+                         classes=[0, 1, 2, 3],
+                         log_loss=True,
+                         from_logits=False,
+                         smooth=0.0,
+                         ignore_index=None,
+                         eps=1e-7,
+                            class_weight = class_weight)
     text_encoders = transform_models_if_DDP([text_encoder])
     unet, network = transform_models_if_DDP([unet, network])
     if args.use_position_embedder:
@@ -141,9 +153,12 @@ def main(args):
             loss_dict['cross_entropy_loss'] = loss.item()
             # [2] Dice Loss
 
-            loss += dice_loss(F.softmax(masks_pred, dim=1).float(), # class 0 ~ 4 check best
-                              true_mask_one_hot_matrix,             # true_masks = [1,4,64,64] (one-hot_
-                              multiclass=True)
+            loss += dice_loss_fn(y_pred = masks_pred,
+                                 y_true = true_mask_one_vector.view(64,64))
+
+            #loss += dice_loss(F.softmax(masks_pred, dim=1).float(), # class 0 ~ 4 check best
+            #                  true_mask_one_hot_matrix,             # true_masks = [1,4,64,64] (one-hot_
+            #                  multiclass=True)
 
 
             loss = loss.to(weight_dtype)
