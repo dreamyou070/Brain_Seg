@@ -9,7 +9,7 @@ layer_name='layer_3'
 sub_folder="up_16_32_64"
 file_name="15_segmentation_model_multiclassification_focal_loss_change_diceloss_test_do_class_weight"
 
-accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
+accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_config \
  --main_process_port $port_number ../segmentation_model.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --network_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/2_binary_segmentation_BraTS2020/models/epoch-000033.safetensors" \
