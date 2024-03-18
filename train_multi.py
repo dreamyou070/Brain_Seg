@@ -135,6 +135,7 @@ def main(args):
             device = accelerator.device
             loss = torch.tensor(0.0, dtype=weight_dtype, device=accelerator.device)
             loss_dict = {}
+
             with torch.set_grad_enabled(True):
                 # CLS, nec, edrma, tumor
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
@@ -312,6 +313,8 @@ if __name__ == "__main__":
     parser.add_argument("--resize_shape", type=int, default=512)
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
     parser.add_argument("--do_class_weight", action='store_true')
+    parser.add_argument("--train_class12", action='store_true')
+
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)

@@ -22,6 +22,17 @@ def call_dataset(args) :
                                 latent_res=args.latent_res, )
         test_dataset = train_dataset
 
+    elif args.train_class12 :
+        root_dir = os.path.join(args.data_path, f'train')
+        test_root_dir = os.path.join(args.data_path, f'val')
+        from data.dataset_multi import TrainDataset_Multi, TestDataset_Multi
+        train_dataset = TrainDataset_Multi(root_dir=root_dir,
+                                           resize_shape=[args.resize_shape, args.resize_shape],
+                                           tokenizer=tokenizer,
+                                           caption=args.trigger_word,
+                                           latent_res=args.latent_res, )
+        test_dataset = train_dataset
+
     else :
         root_dir = os.path.join(args.data_path, f'train')
         test_root_dir = os.path.join(args.data_path, f'val')

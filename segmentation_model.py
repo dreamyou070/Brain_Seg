@@ -108,11 +108,11 @@ def main(args):
     segmentation_model = UNet(n_classes=4, bilinear=False)
     if args.segment_use_raw_latent :
         segmentation_model = UNet2(n_channels=4,
-                                   n_classes=4,
+                                   n_classes=args.n_classes,
                                    bilinear=False)
     if args.seg_based_lora :
         segmentation_model = UNet3(n_channels=4,
-                                   n_classes=4,
+                                   n_classes=args.n_classes,
                                    bilinear=False)
 
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -138,26 +138,35 @@ def main(args):
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
             loss_dict = {}
-            with torch.no_grad():
-                encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
-                if args.text_truncate :
-                    encoder_hidden_states = encoder_hidden_states[:,:2,:]
-                image = batch['image'].to(dtype=weight_dtype)                 # 1,3,512,512
-                true_mask_one_hot_matrix = batch['gt'].to(dtype=weight_dtype) # 1,4,64,64
-                true_mask_one_vector = batch['gt_vector'].to(dtype=weight_dtype) # 4096
+            if args.lora_inference :
                 with torch.no_grad():
-                    latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
-                with torch.set_grad_enabled(True):
-                    unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
-                query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
-                controller.reset()
+                    encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
+                    if args.text_truncate :
+                        encoder_hidden_states = encoder_hidden_states[:,:2,:]
+                    image = batch['image'].to(dtype=weight_dtype)                 # 1,3,512,512
+                    true_mask_one_hot_matrix = batch['gt'].to(dtype=weight_dtype) # 1,4,64,64
+                    true_mask_one_vector = batch['gt_vector'].to(dtype=weight_dtype) # 4096
+                    with torch.no_grad():
+                        latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
+                    with torch.set_grad_enabled(True):
+                        unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
+                    query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
+                    controller.reset()
+                    q_dict = {}
+                    for layer in args.trg_layer_list:
+                        query = query_dict[layer][0].squeeze()  # head, pix_num, dim
+                        head, pix_num, dim = query.shape
+                        res = int(pix_num ** 0.5)
+                        query = query.view(head, res, res, dim).permute(0,3,1,2).mean(dim=0)
+                        q_dict[res] = query.unsqueeze(0)
+            else :
+                image = batch['image'].to(dtype=weight_dtype)  # 1,3,512,512
+                true_mask_one_hot_matrix = batch['gt'].to(dtype=weight_dtype)  # 1,4,64,64
+                true_mask_one_vector = batch['gt_vector'].to(dtype=weight_dtype)  # 4096
                 q_dict = {}
-                for layer in args.trg_layer_list:
-                    query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                    head, pix_num, dim = query.shape
-                    res = int(pix_num ** 0.5)
-                    query = query.view(head, res, res, dim).permute(0,3,1,2).mean(dim=0)
-                    q_dict[res] = query.unsqueeze(0)
+                q_dict[64] = batch['feature_64']
+                q_dict[32] = batch['feature_32']
+                q_dict[16] = batch['feature_16']
             #######################################################################################################################
             # segmentation model
             if args.segment_use_raw_latent :
@@ -357,6 +366,9 @@ if __name__ == "__main__":
     parser.add_argument("--text_truncate", action='store_true')
     parser.add_argument("--segment_use_raw_latent", action='store_true')
     parser.add_argument("--use_dice_anomal_loss", action='store_true')
+    parser.add_argument("--n_classes", default=4, type=int)
+    parser.add_argument("--lora_inference", action='store_true')
+    parser.add_argument("--train_class12", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
