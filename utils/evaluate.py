@@ -1,10 +1,10 @@
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
-from utils.dice_score import multiclass_dice_coeff, dice_coeff
+from utils.dice_score import multiclass_dice_coeff
 import torch
 import numpy as np
-from keras.metrics import MeanIoU
+from sklearn.metrics import confusion_matrix
 
 @torch.inference_mode()
 def evaluate(segmentation_model, dataloader, device, text_encoder, unet, vae, controller, weight_dtype, position_embedder, args):
@@ -94,11 +94,9 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
                                           multiclass=True)
                 dice_coeff_list.append(dice_coeff)
                 global_num += 1
-        a = np.random(64)
-        y_true_list = [a, a]
         y = torch.cat(y_true_list)
         y_hat = torch.cat(y_pred_list)
-        from sklearn.metrics import confusion_matrix
+
         score = confusion_matrix(y, y_hat)
         actual_axis, pred_axis = score.shape
         IOU_dict = {}
