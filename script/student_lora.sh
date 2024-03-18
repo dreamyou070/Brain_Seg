@@ -23,4 +23,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --do_attn_loss --do_cls_train \
  --resize_shape 512 --latent_res 64 --multiclassification_focal_loss --multiclassification_focal_loss \
- --seg_based_lora --train_class12
+ --train_class12

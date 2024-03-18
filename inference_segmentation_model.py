@@ -236,8 +236,9 @@ def main(args):
                 masks_pred = F.softmax(masks_pred, dim=1).squeeze(0).detach().cpu().numpy() # 4,64,64
                 masks_pred = np.argmax(masks_pred, axis=0)
                 rgb_pred = np.zeros((64,64,3))
-                n_classes = 4
-                colors = [[0,0,0], [255,0,0], [0,255,0], [0,0,255]]
+                n_classes = 3
+                #colors = [[0,0,0], [255,0,0], [0,255,0], [0,0,255]]
+                colors = [[0, 0, 0], [255, 0, 0], [0, 255, 0]]
                 for c in range(n_classes):
                     position = np.where(masks_pred == c, 1, 0)
                     position = np.expand_dims(position, axis=2)  # 64,64,1
