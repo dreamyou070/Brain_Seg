@@ -193,6 +193,7 @@ def main(args):
             rgb_imgs = os.listdir(rgb_folder)
 
             for rgb_img in rgb_imgs:
+                gt_pil_dir = os.path.join(gt_folder, rgb_img)
                 name, ext = os.path.splitext(rgb_img)
                 rgb_img_dir = os.path.join(rgb_folder, rgb_img)
                 pil_img = Image.open(rgb_img_dir).convert('RGB')
@@ -232,8 +233,9 @@ def main(args):
                 # [5.4] segmenting
                 masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
                 import torch.nn.functional as F
-                masks_pred = F.softmax(masks_pred, dim=1).unsqueeze(0).detach().cpu().numpy()
+                masks_pred = F.softmax(masks_pred, dim=1).unsqueeze(0).detach().cpu().numpy() # 4, 64,64
                 masks_pred = np.argmax(masks_pred, axis=0) #
+                print(f'masks_pred (64,64) = {masks_pred.shape}')
                 rgb_pred = np.zeros((64,64,3))
 
                 n_classes = 4
@@ -245,6 +247,11 @@ def main(args):
                     position_color = position * colors[c]
                     rgb_pred += position_color
                 rgb_pil = Image.fromarray(rgb_pred)
+
+                name = os.path.splitext(rgb_img)
+                rgb_pil.save(os.path.join(save_base_folder, f'{name}_pred.jpg'))
+                import shutil
+                shutil.copy(gt_pil_dir, os.path.join(save_base_folder, f'{name}_gt.jpg'))
 
 
 if __name__ == '__main__':
