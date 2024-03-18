@@ -9,7 +9,7 @@ layer_name='layer_3'
 sub_folder="up_16_32_64"
 file_name="10_class3_single_BraTS2020_text_truncate"
 
-accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
+accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_config \
  --main_process_port $port_number ../train_single.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --network_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/models/epoch-000005.safetensors" \
