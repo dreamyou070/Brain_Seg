@@ -231,8 +231,20 @@ def main(args):
 
                 # [5.4] segmenting
                 masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
+                import torch.nn.functional as F
+                masks_pred = F.softmax(masks_pred, dim=1).unsqueeze(0).cpu().numpy()
+                masks_pred = np.argmax(masks_pred, axis=0) #
+                rgb_pred = np.zeros(64,64,3)
 
-
+                n_classes = 4
+                colors = [[0,0,0], [255,0,0], [0,255,0], [0,0,255]]
+                for c in range(n_classes):
+                    position = np.where(masks_pred == c, 1, 0)
+                    position = np.expand_dims(position, axis=2)  # 64,64,1
+                    position = np.repeat(position, 3, axis=2)
+                    position_color = position * colors[c]
+                    rgb_pred += position_color
+                rgb_pil = Image.fromarray(rgb_pred)
 
 
 if __name__ == '__main__':
