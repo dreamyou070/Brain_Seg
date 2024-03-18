@@ -2,12 +2,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from math import exp
-
-def gen_attn_loss(value_dict):
-    cls_loss = torch.stack(value_dict['cls_loss'] , dim=0).mean(dim=0)
-    trigger_loss = torch.stack(value_dict['trigger_loss'], dim=0).mean(dim=0)
-    return cls_loss, trigger_loss
 
 
 class FocalLoss(nn.Module):
@@ -110,8 +104,7 @@ class Multiclass_FocalLoss(nn.Module):
 
         # [2] what is nll_loss
         # negative log likelihood loss
-        #
         loss = F.nll_loss(logpt,
-                          target.type(torch.LongTensor),)
+                          target.type(torch.LongTensor).to(logpt.device),)
         return loss
 
