@@ -232,7 +232,7 @@ def main(args):
                 # [5.4] segmenting
                 masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
                 import torch.nn.functional as F
-                masks_pred = F.softmax(masks_pred, dim=1).unsqueeze(0).cpu().numpy()
+                masks_pred = F.softmax(masks_pred, dim=1).unsqueeze(0).detach().cpu().numpy()
                 masks_pred = np.argmax(masks_pred, axis=0) #
                 rgb_pred = np.zeros(64,64,3)
 
