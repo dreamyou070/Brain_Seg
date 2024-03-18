@@ -4,10 +4,10 @@ import numpy as np
 
 
 def expand_mask(mask, head, dim):
-    mask = np.expand_dims(mask, axis=0)
-    mask = np.repeat(mask, repeats=head, axis=0, )
-    mask = np.expand_dims(mask, axis=3)
-    mask = np.repeat(mask, repeats=dim, axis=3, )
+    #mask = np.expand_dims(mask, axis=0)
+    #mask = np.repeat(mask, repeats=head, axis=0, )
+    mask = np.expand_dims(mask, axis=2)
+    mask = np.repeat(mask, repeats=dim, axis=2)
     mask = torch.tensor(mask)
     return mask
 
@@ -51,14 +51,13 @@ def main() :
                 features = os.listdir(c1_res_folder)
                 for feature in features :
                     name, ext = os.path.splitext(feature)
-                    c1_feature = torch.load(os.path.join(c1_res_folder, feature)) # head, dim, res, res
-                    print(f'c1_feature = {c1_feature.shape}')
-                    head, dim = c1_feature.shape[0], c1_feature.shape[1]
-                    c1_feature = c1_feature.permute(0,2,3,1) # head, res,res,dim
+                    c1_feature = torch.load(os.path.join(c1_res_folder, feature)) # dim, res, res
+                    dim = c1_feature.shape[0]
+                    c1_feature = c1_feature.permute(1,2,0) # head, res,res,dim
                     c2_feature = torch.load(os.path.join(c2_res_folder, feature))
-                    c2_feature = c2_feature.permute(0, 2, 3, 1)
+                    c2_feature = c2_feature.permute(1,2,0)
                     #c3_feature = torch.load(os.path.join(c3_res_folder, feature))
-                    #c3_feature = c3_feature.permute(0, 2, 3, 1)
+                    #c3_feature = c3_feature.permute(1,2,0)
 
                     if normality_folder == 'anormal' :
                         mask_arr = os.path.join(ct_mask_folder, f'{name}.npy')
@@ -67,21 +66,20 @@ def main() :
                         c1_mask = np.where(mask == 1, 1, 0)
                         c2_mask = np.where(mask == 2, 1, 0)
                         #c3_mask = np.where(mask == 3, 1, 0)
-                        c0_mask = expand_mask(c0_mask, head, dim)
-                        c1_mask = expand_mask(c1_mask, head, dim)
-                        c2_mask = expand_mask(c2_mask, head, dim)
-                        #c3_mask = expand_mask(c3_mask, head, dim)
+                        c0_mask = expand_mask(c0_mask, dim)
+                        c1_mask = expand_mask(c1_mask, dim)
+                        c2_mask = expand_mask(c2_mask, dim)
+                        #c3_mask = expand_mask(c3_mask, dim)
 
                         # [4] total feature
                         #total_feature = c1_feature * c1_mask + c2_feature * c2_mask + c3_feature * c3_mask + (c1_feature+c2_feature+c3_feature)/3 * c0_mask
                         total_feature = c1_feature * c1_mask + c2_feature * c2_mask + (
                                     c1_feature + c2_feature) / 2 * c0_mask
-                        total_feature = total_feature.permute(0,3,1,2)
+                        total_feature = total_feature.permute(2,0,1)
                         torch.save(total_feature, os.path.join(ct_res_folder, feature))
                     else :
                         #total_feature = (c1_feature + c2_feature + c3_feature)/3
-                        total_feature = (c1_feature + c2_feature) / 2
-                        total_feature = total_feature.permute(0, 3, 1, 2)
+                        total_feature = (c1_feature + c2_feature) / 2 # dim, res, res
                         torch.save(total_feature, os.path.join(ct_res_folder, feature))
 
 
