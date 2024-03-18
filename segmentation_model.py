@@ -95,8 +95,13 @@ def main(args):
     register_attention_control(unet, controller)
 
     print(f'\n step 10. segmentation model')
-    from model.segmentation_unet import UNet
+    from model.segmentation_unet import UNet, UNet2
     segmentation_model = UNet(n_classes=4, bilinear=False)
+    if args.segment_use_raw_latent :
+        segmentation_model = UNet2(n_channels=4,
+                                   n_classes=4,
+                                   bilinear=False)
+
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
     trainable_params = []
     trainable_params.append({"params": segmentation_model.parameters(), "lr": args.learning_rate})
@@ -142,7 +147,10 @@ def main(args):
                     q_dict[res] = query.unsqueeze(0)
             #######################################################################################################################
             # segmentation model
-            masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16]) # 1,4,64,64
+            if not args.segment_use_raw_latent:
+                masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16]) # 1,4,64,64
+            if args.segment_use_raw_latent:
+                masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
             # target = true mask
             loss = criterion(masks_pred, true_mask_one_hot_matrix)
             if args.multiclassification_focal_loss :
@@ -316,6 +324,7 @@ if __name__ == "__main__":
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
     parser.add_argument("--do_class_weight", action='store_true')
     parser.add_argument("--text_truncate", action='store_true')
+    parser.add_argument("--segment_use_raw_latent", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)

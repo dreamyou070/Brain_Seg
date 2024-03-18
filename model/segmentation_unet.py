@@ -118,6 +118,37 @@ class UNet(nn.Module):
         logits = self.outc(x)
         return logits
 
+class UNet2(nn.Module):
+
+    def __init__(self, n_channels, n_classes, bilinear=False):
+        super(UNet2, self).__init__()
+
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+        self.init_conv = (DoubleConv(n_channels, 40))
+        self.down1 = (Down(40, 80))  # self.down1 = (Down(40,80))
+        self.down2 = (Down(80, 160))  # self.down2 = (Down(80,160))
+        self.down3 = (Down(160, 320))  # self.down3 = (Down(160,320))
+        factor = 2 if bilinear else 1
+        self.up1 = (Up(320, 160 // factor, bilinear))
+        self.up2 = (Up(160, 80 // factor, bilinear))
+        self.up3 = (Up_conv(80, bilinear))
+        self.outc = (OutConv(40, n_classes))
+
+    def forward(self, x, x1, x2, x3):
+        # x = [1,4,64,64]
+        x_out = self.init_conv(x)  # 1,40,64,64
+        x1_in = x_out + x1         # 1,40,64,64
+        x1_out = self.down1(x1_in)    # 1,80,32,32
+        x2_in = x1_out + x2        # 1,80,32,32
+        x2_out = self.down2(x2_in) # 1,160,16,16
+        x3_in = x2_out + x3        # 1,160,16,16
+        x3_out = self.down3(x3_in) # 1,320,8,8
+        x = self.up1(x3_out, x2_out)
+        x = self.up2(x, x1_out)     # 1,80, 32, 32
+        x = self.up3(x)             # 1, 40, 64,64
+        logits = self.outc(x)
+        return logits
 """
 # x1 = torch.randn(1,40,64,64)
 class UNet2(nn.Module):
@@ -148,4 +179,17 @@ class UNet2(nn.Module):
         x = self.up3(x)             # 1, 40, 64,64
         logits = self.outc(x)
         return logits
+"""
+"""
+x = torch.randn(1,4,64,64)
+x1 = torch.randn(1,40, 64,64)
+x2 = torch.randn(1,80, 32,32)
+x3 = torch.randn(1,160,16,16)
+unet1 = UNet(n_classes = 4)
+#logit1 = unet1(x, x1,x2,x3)
+
+
+unet2 = UNet2(n_channels=4, n_classes=4)
+logit2 = unet2(x, x1,x2,x3)
+print(logit2.shape)
 """
