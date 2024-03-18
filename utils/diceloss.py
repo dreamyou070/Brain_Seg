@@ -3,8 +3,8 @@ from typing import Optional, List
 import torch
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss
-from _functional import soft_dice_score, to_tensor, soft_dice_score_class_weight
-from constants import BINARY_MODE, MULTICLASS_MODE, MULTILABEL_MODE
+from utils._functional import soft_dice_score, to_tensor, soft_dice_score_class_weight
+from utils.constants import BINARY_MODE, MULTICLASS_MODE, MULTILABEL_MODE
 
 __all__ = ["DiceLoss"]
 
