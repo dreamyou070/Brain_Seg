@@ -27,9 +27,10 @@ def multiclass_dice_coeff(input: Tensor, target: Tensor, reduce_batch_first: boo
 def dice_loss(input: Tensor,
               target: Tensor, multiclass: bool = False):
     # Dice loss (objective to minimize) between 0 and 1
+    # good model have high dice_coefficient
     fn = multiclass_dice_coeff if multiclass else dice_coeff
-    dice_coeff = fn(input, target, reduce_batch_first=True)
-    dice_loss = 1 - dice_coeff
+    dice_coefficient = fn(input, target, reduce_batch_first=True)
+    dice_loss = 1 - dice_coefficient
     return dice_loss
 
 """

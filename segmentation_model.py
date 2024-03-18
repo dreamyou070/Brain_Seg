@@ -105,7 +105,7 @@ def main(args):
         segmentation_model.train()
         epoch_loss_total = 0
         accelerator.print(f"\nepoch {epoch + 1}/{args.start_epoch + args.max_train_epochs}")
-
+        """
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
             loss_dict = {}
@@ -178,19 +178,22 @@ def main(args):
             p_save_dir = os.path.join(segmentation_base_save_dir,
                                       f'segmentation_{epoch + 1}.safetensors')
             pe_model_save(accelerator.unwrap_model(segmentation_model), save_dtype, p_save_dir)
+        """
 
 
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
-        from utils.evaluate import calculate_IOU
-        IOU_dict, pred = calculate_IOU(segmentation_model, test_dataloader, accelerator.device, text_encoder, unet, vae, controller, weight_dtype,
-                                        position_embedder, args)
+        from utils.evaluate import evaluation_check
+        IOU_dict, pred, dice_coeff = evaluation_check(segmentation_model, test_dataloader, accelerator.device,
+                                                      text_encoder, unet, vae, controller, weight_dtype,
+                                                      position_embedder, args)
         print(f'IOU_keras = {IOU_dict}')
         # saving
         score_save_dir = os.path.join(args.output_dir, 'score.txt')
         with open(score_save_dir, 'a') as f :
             for k in IOU_dict :
                 f.write(f'class {k} = {IOU_dict[k]} ')
+            f.write(f'| dice_coeff = {dice_coeff}')
             f.write(f'\n')
         import matplotlib.pyplot as plt
         #img_base_dir = os.path.join(args.output_dir, 'inference')
@@ -198,6 +201,7 @@ def main(args):
         #plt.imshow(pred, cmap = 'jet')
         #plt.savefig(os.path.join(img_base_dir, f'epoch_{epoch+1}.jpg'))
         #plt.clear()
+
 
     accelerator.end_training()
 
