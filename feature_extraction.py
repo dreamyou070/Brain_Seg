@@ -1,6 +1,6 @@
 import os
 import argparse, torch
-from model.lora import LoRANetwork,LoRAInfModule
+from model.lora import LoRANetwork, LoRAInfModule
 from attention_store import AttentionStore
 from utils.attention_control import passing_argument
 from model.unet import unet_passing_argument
@@ -32,12 +32,13 @@ def resize_query_features(query):
     # resized_query = resized_query.view(64 * 64,dim)  # #view(head_num, -1, dim).squeeze()  # 1, pix_num, dim
     return resized_query
 
+
 def prev_step(model_output,
               timestep: int,
               sample,
               scheduler):
-    #timestep, prev_timestep = timestep, max( timestep - scheduler.config.num_train_timesteps // scheduler.num_inference_steps, 0)
-    timestep, prev_timestep = 1,0
+    # timestep, prev_timestep = timestep, max( timestep - scheduler.config.num_train_timesteps // scheduler.num_inference_steps, 0)
+    timestep, prev_timestep = 1, 0
     alpha_prod_t = scheduler.alphas_cumprod[timestep] if timestep >= 0 else scheduler.final_alpha_cumprod
     alpha_prod_t_prev = scheduler.alphas_cumprod[prev_timestep]
     beta_prod_t = 1 - alpha_prod_t
@@ -46,11 +47,14 @@ def prev_step(model_output,
     prev_sample = alpha_prod_t_prev ** 0.5 * prev_original_sample + prev_sample_direction
     return prev_sample
 
+
 from diffusers import DDIMScheduler
+
 scheduler = DDIMScheduler(num_train_timesteps=1000,
-                                      beta_start=0.00085,
-                                      beta_end=0.012,
-                                      beta_schedule="scaled_linear")
+                          beta_start=0.00085,
+                          beta_end=0.012,
+                          beta_schedule="scaled_linear")
+
 
 def inference(latent,
               tokenizer, text_encoder, unet, controller, normal_activator, position_embedder,
@@ -59,7 +63,7 @@ def inference(latent,
     input_ids, attention_mask = get_input_ids(tokenizer, args.prompt)
     encoder_hidden_states = text_encoder(input_ids.to(text_encoder.device))["last_hidden_state"]
     # [2] unet
-    if args.use_position_embedder :
+    if args.use_position_embedder:
         unet(latent, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
              noise_type=position_embedder)
     else:
@@ -102,9 +106,7 @@ def inference(latent,
     return cls_map_pil, normal_map_pil, anomaly_map_pil
 
 
-
 def main(args):
-
     print(f'\n step 1. accelerator')
     accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps,
                               mixed_precision=args.mixed_precision,
@@ -116,7 +118,7 @@ def main(args):
     tokenizer = load_tokenizer(args)
     text_encoder, vae, unet, _ = load_target_model(args, weight_dtype,
                                                    accelerator)
-    if args.vae_pretrained_dir is not None :
+    if args.vae_pretrained_dir is not None:
         vae.load_state_dict(load_file(args.vae_pretrained_dir))
         vae.to(accelerator.device, dtype=weight_dtype)
 
@@ -173,9 +175,9 @@ def main(args):
 
         # [3] files
         parent, _ = os.path.split(args.network_folder)
-        if args.do_train_check :
+        if args.do_train_check:
             recon_base_folder = os.path.join(parent, 'reconstruction_with_train_data')
-        else :
+        else:
             recon_base_folder = os.path.join(parent, 'reconstruction_with_test_data')
         os.makedirs(recon_base_folder, exist_ok=True)
         lora_base_folder = os.path.join(recon_base_folder, f'lora_epoch_{lora_epoch}')
@@ -185,7 +187,7 @@ def main(args):
         controller = AttentionStore()
         register_attention_control(unet, controller)
 
-        for thred in args.threds :
+        for thred in args.threds:
             thred_folder = os.path.join(lora_base_folder, f'thred_{thred}')
             os.makedirs(thred_folder, exist_ok=True)
 
@@ -196,72 +198,65 @@ def main(args):
 
             # [1] test path
             test_img_folder = args.data_path
+            parent, test = os.path.split(args.data_path)
+            phases = os.listdir(parent)
+            for phase in phases:
+                phase_dir = os.path.join(parent, phase)
+                folders = os.listdir(phase_dir)
+                for folder in folders:
+                    folder_dir = os.path.join(phase_dir, folder)
+                    rgb_folder = os.path.join(folder_dir, 'xray')
+                    gt_folder = os.path.join(folder_dir, 'gt_pil')
+                    feature_64_folder = os.path.join(folder_dir, 'feature_64')
+                    os.makedirs(feature_64_folder, exist_ok = True)
+                    feature_32_folder = os.path.join(folder_dir, 'feature_32')
+                    os.makedirs(feature_32_folder, exist_ok=True)
+                    feature_16_folder = os.path.join(folder_dir, 'feature_16')
+                    os.makedirs(feature_16_folder, exist_ok=True)
+                    rgb_imgs = os.listdir(rgb_folder)
 
-            if args.do_train_check :
+                    for rgb_img in rgb_imgs:
 
-                test_img_folder = os.path.join(parent, 'train')
-            parent, test_folder = os.path.split(test_img_folder)
+                        name, ext = os.path.splitext(rgb_img)
+                        rgb_img_dir = os.path.join(rgb_folder, rgb_img)
+                        pil_img = Image.open(rgb_img_dir).convert('RGB')
+                        org_h, org_w = pil_img.size
 
-            anomal_folders = os.listdir(test_img_folder)
-            for anomal_folder in anomal_folders:
-                answer_anomal_folder = os.path.join(answer_base_folder, anomal_folder)
-                os.makedirs(answer_anomal_folder, exist_ok=True)
-                save_base_folder = os.path.join(check_base_folder, anomal_folder)
-                os.makedirs(save_base_folder, exist_ok=True)
-
-
-                anomal_folder_dir = os.path.join(test_img_folder, anomal_folder)
-                rgb_folder = os.path.join(anomal_folder_dir, 'rgb')
-                if args.test_with_xray :
-                    rgb_folder = os.path.join(anomal_folder_dir, 'xray')
-                gt_folder = os.path.join(anomal_folder_dir, 'gt_pil')
-                if args.object_crop:
-                    object_mask_folder = os.path.join(anomal_folder_dir, 'object_mask')
-                rgb_imgs = os.listdir(rgb_folder)
-
-                for rgb_img in rgb_imgs:
-
-                    name, ext = os.path.splitext(rgb_img)
-                    rgb_img_dir = os.path.join(rgb_folder, rgb_img)
-                    pil_img = Image.open(rgb_img_dir).convert('RGB')
-                    org_h, org_w = pil_img.size
-
-                    # [1] read object mask
-                    input_img = pil_img
-                    trg_h, trg_w = input_img.size
-                    if accelerator.is_main_process:
-                        with torch.no_grad():
-                            img = np.array(input_img.resize((512, 512))) # [512,512,3]
-                            image = torch.from_numpy(img).float() / 127.5 - 1
-                            image = image.permute(2, 0, 1).unsqueeze(0).to(vae.device, weight_dtype) # [1,3,512,512]
+                        # [1] read object mask
+                        input_img = pil_img
+                        trg_h, trg_w = input_img.size
+                        if accelerator.is_main_process:
                             with torch.no_grad():
-                                if args.patch_positional_self_embedder:
-                                    latent = position_embedder.patch_embed(image.to(dtype=weight_dtype))
-                                else:
+                                img = np.array(input_img.resize((512, 512)))  # [512,512,3]
+                                image = torch.from_numpy(img).float() / 127.5 - 1
+                                image = image.permute(2, 0, 1).unsqueeze(0).to(vae.device, weight_dtype)  # [1,3,512,512]
+                                with torch.no_grad():
+                                    # [1] latent
                                     latent = vae.encode(image.to(dtype=weight_dtype)).latent_dist.sample() * 0.18215
-                            cls_map_pil, normal_map_pil, anomaly_map_pil = inference(latent,
-                                                                                     tokenizer, text_encoder, unet,
-                                                                                     controller, normal_activator,
-                                                                                     position_embedder,
-                                                                                     args,
-                                                                                     trg_h, trg_w,
-                                                                                     thred, global_network)
-                            cls_map_pil.save(os.path.join(save_base_folder, f'{name}_cls.png'))
-                            normal_map_pil.save(os.path.join(save_base_folder, f'{name}_normal.png'))
-                            anomaly_map_pil.save( os.path.join(save_base_folder, f'{name}_anomal.png'))
-                            anomaly_map_pil.save(os.path.join(answer_anomal_folder, f'{name}.tiff'))
-                    controller.reset()
-                    normal_activator.reset()
-                    # [2] gt save
-                    if 'good' not in anomal_folder:
-                        gt_img_save_dir = os.path.join(save_base_folder, f'{name}_gt.png')
-                        Image.open(os.path.join(gt_folder, rgb_img)).resize((org_h, org_w)).save(gt_img_save_dir)
-                    # [3] original save
-                    Image.open(rgb_img_dir).convert('RGB').save(os.path.join(save_base_folder, rgb_img))
-        print(f'Model To Original')
-        for k in raw_state_dict_orig.keys():
-            raw_state_dict[k] = raw_state_dict_orig[k]
-        network.load_state_dict(raw_state_dict)
+                                    # [2] text
+                                    input_ids, attention_mask = get_input_ids(tokenizer, args.prompt)
+                                    encoder_hidden_states = text_encoder(input_ids.to(text_encoder.device))["last_hidden_state"]
+                                    if args.text_truncate:
+                                        encoder_hidden_states = encoder_hidden_states[:, :2, :]
+                                    # [3] unet
+                                    unet(latent, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
+                                         noise_type=position_embedder)
+                                    query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
+                                    controller.reset()
+                                    for layer in args.trg_layer_list:
+                                        query = query_dict[layer][0].squeeze()  # head, pix_num, dim
+                                        head, pix_num, dim = query.shape
+                                        res = int(pix_num ** 0.5)
+                                        query = query.view(head, res, res, dim).permute(0, 3, 1, 2).mean(dim=0)
+                                        query = query.detach().cpu()
+                                        query_save_dir = os.path.join(folder_dir, f'feature_{res}/{name}.pt')
+                                        torch.save(query, query_save_dir)
+
+            print(f'Model To Original')
+            for k in raw_state_dict_orig.keys():
+                raw_state_dict[k] = raw_state_dict_orig[k]
+            network.load_state_dict(raw_state_dict)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Anomal Lora')
@@ -290,12 +285,16 @@ if __name__ == '__main__':
     parser.add_argument('--max_timestep', type=int, default=500)
     # step 8. test
     import ast
+
+
     def arg_as_list(arg):
         v = ast.literal_eval(arg)
         if type(v) is not list:
             raise argparse.ArgumentTypeError("Argument \"%s\" is not a list" % (arg))
         return v
-    parser.add_argument("--threds", type=arg_as_list,default=[0.85,])
+
+
+    parser.add_argument("--threds", type=arg_as_list, default=[0.85, ])
     parser.add_argument("--trg_layer_list", type=arg_as_list, default=[])
     parser.add_argument("--position_embedding_layer", type=str)
     parser.add_argument("--use_position_embedder", action='store_true')
@@ -315,7 +314,7 @@ if __name__ == '__main__':
     parser.add_argument("--do_train_check", action='store_true')
     parser.add_argument("--vae_pretrained_dir", type=str)
     parser.add_argument("--use_global_network", action='store_true')
-    parser.add_argument("--local_hidden_states_globalize", action='store_true')
+    parser.add_argument("--text_truncate", action='store_true')
     parser.add_argument("--test_with_xray", action='store_true')
     args = parser.parse_args()
     passing_argument(args)
