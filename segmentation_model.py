@@ -154,7 +154,7 @@ def main(args):
             # [2] Dice Loss
             y = true_mask_one_vector.view(64, 64).unsqueeze(dim=0)
             loss += dice_loss_fn(y_pred = masks_pred,
-                                 y_true = y.unsqueeze(0))
+                                 y_true = y.unsqueeze(0).to(torch.int64))
             #loss += dice_loss(F.softmax(masks_pred, dim=1).float(), # class 0 ~ 4 check best
             #                  true_mask_one_hot_matrix,             # true_masks = [1,4,64,64] (one-hot_
             #                  multiclass=True)
