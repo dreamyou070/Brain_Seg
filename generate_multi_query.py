@@ -39,6 +39,7 @@ def main() :
             os.makedirs(ct_normality_folder, exist_ok = True)
 
             for res in res_list :
+                print(f'res = {res}')
                 c1_res_folder = os.path.join(c1_normality_folder, f'feature_{res}')
                 c2_res_folder = os.path.join(c2_normality_folder, f'feature_{res}')
                 #c3_res_folder = os.path.join(c3_normality_folder, f'feature_{res}')
@@ -51,6 +52,7 @@ def main() :
                 for feature in features :
                     name, ext = os.path.splitext(feature)
                     c1_feature = torch.load(os.path.join(c1_res_folder, feature)) # head, dim, res, res
+                    print(f'c1_feature = {c1_feature.shape}')
                     head, dim = c1_feature.shape[0], c1_feature.shape[1]
                     c1_feature = c1_feature.permute(0,2,3,1) # head, res,res,dim
                     c2_feature = torch.load(os.path.join(c2_res_folder, feature))
