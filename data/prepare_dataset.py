@@ -15,11 +15,12 @@ def call_dataset(args) :
     if args.train_single :
         from data.dataset_single import TrainDataset_Single
         dataset_class = TrainDataset_Single
-        dataset = dataset_class(root_dir=root_dir,
+        train_dataset = dataset_class(root_dir=root_dir,
                                 resize_shape=[512, 512],
                                 tokenizer=tokenizer,
                                 caption='brain',
                                 latent_res=args.latent_res, )
+        test_dataset = train_dataset
 
     else :
         root_dir = os.path.join(args.data_path, f'train')
