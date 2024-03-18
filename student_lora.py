@@ -150,11 +150,11 @@ def main(args):
             query_list, key_list, q_dict = [], [], {}
             for layer in args.trg_layer_list:
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
+                query_list.append(resize_query_features(query))  # head, pix_num, dim
                 head, pix_num, dim = query.shape
                 res = int(pix_num ** 0.5)
                 query = query.view(head, res, res, dim).permute(0, 3, 1, 2).mean(dim=0)
                 q_dict[res] = query.unsqueeze(0)
-                query_list.append(resize_query_features(query))  # head, pix_num, dim
                 key_list.append(key_dict[layer][0])  # head, pix_num, dim
             # [1] local
             local_query = torch.cat(query_list, dim=-1)  # head, pix_num, long_dim
