@@ -10,3 +10,9 @@ position_color = position * [0,0,0]
 print(position_color)
 """
 a = np.zeros((64,64,3))
+masks_pred = torch.randn((1,4,64,64))
+import torch.nn.functional as F
+masks_pred = F.softmax(masks_pred, dim=1).squeeze(0).detach().cpu().numpy() # 4,64,64
+
+masks_pred = np.argmax(masks_pred, axis=0) #
+print(f'masks_pred (64,64) = {masks_pred.shape}')
