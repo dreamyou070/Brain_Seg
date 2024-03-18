@@ -33,8 +33,8 @@ def main() :
                 ct_mask_folder = os.path.join(ct_normality_folder, f'feature_{res}_mask')
                 os.makedirs(ct_mask_folder, exist_ok=True)
                 features = os.listdir(c1_res_folder)
-                for feature in features :
-                    c1_feature = torch.load(os.path.join(c1_res_folder, feature))
+                #for feature in features :
+                    #c1_feature = torch.load(os.path.join(c1_res_folder, feature))
                     #c2_feature = torch.load(os.path.join(c2_res_folder, feature))
                     #c3_feature = torch.load(os.path.join(c3_res_folder, feature))
 
