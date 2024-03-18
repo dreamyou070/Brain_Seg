@@ -135,21 +135,16 @@ def main(args):
             # target = true mask
             loss = criterion(masks_pred, true_mask_one_hot_matrix)
             if args.multiclassification_focal_loss :
-                masks_pred = masks_pred.permute(0,2,3,1)
-                masks_pred = masks_pred.view(-1, masks_pred.shape[-1])
-                loss = loss_multi_focal(masks_pred, # N,C
+                masks_pred_ = masks_pred.permute(0,2,3,1)
+                masks_pred_ = masks_pred_.view(-1, masks_pred.shape[-1])
+                loss = loss_multi_focal(masks_pred_, # N,C
                                         true_mask_one_vector.squeeze().to(masks_pred.device)) # N
             loss_dict['cross_entropy_loss'] = loss.item()
             # [2] Dice Loss
 
-            a = F.softmax(masks_pred, dim=1).float()
-            print(f'dice input shape = {a.shape}')
-            print(f'dice target shape = {true_mask_one_hot_matrix.shape}')
-
             loss += dice_loss(F.softmax(masks_pred, dim=1).float(), # class 0 ~ 4 check best
                               true_mask_one_hot_matrix,             # true_masks = [1,4,64,64] (one-hot_
                               multiclass=True)
-
 
 
             loss = loss.to(weight_dtype)
