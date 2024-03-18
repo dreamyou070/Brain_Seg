@@ -77,10 +77,12 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
                     query = query.view(head, res, res, dim).permute(0, 3, 1, 2).mean(dim=0)
                     q_dict[res] = query.unsqueeze(0)
                 # segmentation model
-                if not args.segment_use_raw_latent:
-                    masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
                 if args.segment_use_raw_latent:
-                    masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
+                    q_out_64, q_out_32, q_out_16, masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])
+                elif args.seg_based_lora:
+                    segmentation_model = segmentation_model(latents)
+                else:
+                    masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
 
                 #######################################################################################################################
                 # segmentation model

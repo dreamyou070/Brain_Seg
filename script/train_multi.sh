@@ -1,13 +1,13 @@
 # !/bin/bash
 #
-port_number=50661
+port_number=50644
 category="medical"
 obj_name="brain"
 benchmark="BraTS2020_Segmentation_multisegment"
 #trigger_word='necrotic, ederma, tumor'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="16_segmentation_model_multiclassification_focal_loss_change_diceloss_test_do_class_weight_segment_use_raw_latent"
+file_name="18_segmentation_model_multiclassification_focal_loss_change_diceloss_test_seg_based_lora"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_config \
  --main_process_port $port_number ../segmentation_model.py --log_with wandb \
@@ -24,4 +24,5 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_config \
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --do_attn_loss --do_cls_train \
- --resize_shape 512 --latent_res 64 --multiclassification_focal_loss --multiclassification_focal_loss --do_class_weight --segment_use_raw_latent
+ --resize_shape 512 --latent_res 64 --multiclassification_focal_loss --multiclassification_focal_loss
+ --seg_based_lora

@@ -104,14 +104,10 @@ def main(args):
     register_attention_control(unet, controller)
 
     print(f'\n step 10. segmentation model')
-    from model.segmentation_unet import UNet, UNet2, UNet3
+    from model.segmentation_unet import UNet, UNet2
     segmentation_model = UNet(n_classes=4, bilinear=False)
     if args.segment_use_raw_latent :
         segmentation_model = UNet2(n_channels=4,
-                                   n_classes=4,
-                                   bilinear=False)
-    if args.seg_based_lora :
-        segmentation_model = UNet3(n_channels=4,
                                    n_classes=4,
                                    bilinear=False)
 
@@ -160,24 +156,12 @@ def main(args):
                     q_dict[res] = query.unsqueeze(0)
             #######################################################################################################################
             # segmentation model
-            if args.segment_use_raw_latent :
-                q_out_64, q_out_32, q_out_16, masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
-            elif args.seg_based_lora:
-                segmentation_model = segmentation_model(latents)
-            else :
+            if not args.segment_use_raw_latent:
                 masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16]) # 1,4,64,64
-
+            if args.segment_use_raw_latent:
+                masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
             # target = true mask
             loss = criterion(masks_pred, true_mask_one_hot_matrix)
-
-            if args.segment_use_raw_latent:
-                q_out_64_target = q_dict[64]
-                q_out_32_target = q_dict[32]
-                q_out_16_target = q_dict[16]
-                query_loss  = loss_l2(q_out_64.float(), q_out_64_target.float()).mean()
-                query_loss += loss_l2(q_out_32.float(), q_out_32_target.float()).mean()
-                query_loss += loss_l2(q_out_16.float(), q_out_16_target.float()).mean()
-                loss += query_loss
 
             # anomal pixel redistribute
             if args.multiclassification_focal_loss :
@@ -349,7 +333,8 @@ if __name__ == "__main__":
     parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--position_embedder_weights", type=str, default=None)
     parser.add_argument("--vae_pretrained_dir", type=str)
-    parser.add_argument("--seg_based_lora", action='store_true')
+    parser.add_argument("--local_hidden_states_globalize", action='store_true')
+    parser.add_argument("--normal_activating_test", action='store_true')
     parser.add_argument("--train_single", action='store_true')
     parser.add_argument("--resize_shape", type=int, default=512)
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
