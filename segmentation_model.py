@@ -169,16 +169,17 @@ def main(args):
             #######################################################################################################################
             # segmentation model
             if args.segment_use_raw_latent :
-                q_out_64, q_out_32, q_out_16, masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
+                masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
             elif args.seg_based_lora:
-                masks_pred = segmentation_model(latents)
+                q_out_64, q_out_32, q_out_16, masks_pred= segmentation_model(latents)
             else :
                 masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16]) # 1,4,64,64
 
             # target = true mask
-            loss = criterion(masks_pred, true_mask_one_hot_matrix)
+            loss = criterion(masks_pred,
+                             true_mask_one_hot_matrix)
 
-            if args.segment_use_raw_latent:
+            if args.seg_based_lora :
                 q_out_64_target = q_dict[64]
                 q_out_32_target = q_dict[32]
                 q_out_16_target = q_dict[16]
