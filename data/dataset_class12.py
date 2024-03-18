@@ -210,12 +210,13 @@ class TrainDataset_Multi(Dataset):
         base_gt = base_gt.permute(2,0,1) # [c,64,64]
 
         # featire_64
-        feature_64 = self.feature_64_list[idx] # dim, 64,64
-        feature_64 = torch.load(feature_64)
-        feature_32 = self.feature_32_list[idx] # dim, 64,64
-        feature_32 = torch.load(feature_32)
-        feature_16 = self.feature_16_list[idx]  # dim, 64,64
-        feature_16 = torch.load(feature_16)
+        feature_64 = self.feature_64_list[idx]
+        feature_64 = torch.load(feature_64) # res,res,dim
+        feature_64 = feature_64.permute(2,0,1)
+        feature_32 = self.feature_32_list[idx]
+        feature_32 = torch.load(feature_32).permute(2,0,1)
+        feature_16 = self.feature_16_list[idx]
+        feature_16 = torch.load(feature_16).permute(2,0,1)
 
 
         # [3] caption
@@ -229,3 +230,7 @@ class TrainDataset_Multi(Dataset):
                 "feature_32": feature_32,
                 "feature_16": feature_16,
                 }
+#import torch
+#base_dir = r'D:\medical\brain\data\BraTS2020_Segmentation_multisegment\train\anomal/sample094_42.pt'
+#feature = torch.load(base_dir)
+#print(feature.shape)

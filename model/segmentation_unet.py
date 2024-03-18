@@ -178,6 +178,13 @@ class UNet3(nn.Module):
         x = self.up3(x)               # 1, 40, 64,64
         logits = self.outc(x)
         return x_out, x1_out, x2_out, logits
+unet_model = UNet3(n_channels=4, n_classes=3)
+x = torch.randn(1,4,64,64)
+out_64, out_32, out_16, logits = unet_model(x)
+print(f'out_64 = {out_64.shape}')
+print(f'out_32 = {out_32.shape}')
+print(f'out_16 = {out_16.shape}')
+
 
 """
 # x1 = torch.randn(1,40,64,64)

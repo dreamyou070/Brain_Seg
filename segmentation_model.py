@@ -171,6 +171,9 @@ def main(args):
                 masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
             elif args.seg_based_lora:
                 q_out_64, q_out_32, q_out_16, masks_pred= segmentation_model(latents)
+                #out_64 = torch.Size([1, 40, 64, 64])
+                #out_32 = torch.Size([1, 80, 32, 32])
+                #out_16 = torch.Size([1, 160, 16, 16])
             else :
                 masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16]) # 1,4,64,64
 
