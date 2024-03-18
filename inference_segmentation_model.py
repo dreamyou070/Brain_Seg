@@ -246,7 +246,7 @@ def main(args):
                     rgb_pred += position_color
 
                 rgb_pil = Image.fromarray((rgb_pred).astype(np.uint8)).convert('RGB')
-                name = os.path.splitext(rgb_img)
+                name = os.path.splitext(rgb_img)[0]
                 rgb_pil.save(os.path.join(save_base_folder, f'{name}_pred.jpg'))
                 import shutil
                 shutil.copy(gt_pil_dir, os.path.join(save_base_folder, f'{name}_gt.jpg'))
