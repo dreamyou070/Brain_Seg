@@ -130,9 +130,8 @@ def main(args):
     text_encoder.requires_grad_(False)
     text_encoder.to(accelerator.device, dtype=weight_dtype)
 
-    print(f'\n step 3. inference')
+    print(f'\n step 3. model')
     print(f' (3.1) network model')
-    models = os.listdir(args.network_folder)
     network = LoRANetwork(text_encoder=text_encoder,
                           unet=unet,
                           lora_dim=args.network_dim,
@@ -152,9 +151,86 @@ def main(args):
     weight_folder = os.path.join(args.output_dir, 'segmentation')
     weights = os.listdir(weight_folder)
     for weight in weights :
+        name = os.path.splitext(weight)[0]
+        seg_epoch = name.split('_')[-1]
         weight_dir = os.path.join(weight_folder, weight)
         segmentation_model.load_state_dict(load_file(weight_dir))
         segmentation_model.to(accelerator.device, dtype=weight_dtype)
+
+        print(f' (3.4) saving directory')
+        if args.do_train_check:
+            recon_base_folder = os.path.join(args.output_dir, 'reconstruction_with_train_data')
+        else:
+            recon_base_folder = os.path.join(args.output_dir, 'reconstruction_with_test_data')
+        os.makedirs(recon_base_folder, exist_ok=True)
+        seg_base_folder = os.path.join(recon_base_folder, f'seg_epoch_{seg_epoch}')
+        os.makedirs(seg_base_folder, exist_ok=True)
+
+        # [4] collector
+        controller = AttentionStore()
+        register_attention_control(unet, controller)
+
+        print(f'\n step 4. data')
+        check_base_folder = os.path.join(seg_base_folder, f'my_check')
+        os.makedirs(check_base_folder, exist_ok=True)
+        answer_base_folder = os.path.join(seg_base_folder, f'scoring/{args.obj_name}/test')
+        os.makedirs(answer_base_folder, exist_ok=True)
+
+        # [1] test path
+        test_img_folder = args.data_path
+        if args.do_train_check:
+            parent, test = os.path.split(args.data_path)
+            test_img_folder = os.path.join(parent, 'train')
+        anomal_folders = os.listdir(test_img_folder)
+        for anomal_folder in anomal_folders:
+            answer_anomal_folder = os.path.join(answer_base_folder, anomal_folder)
+            os.makedirs(answer_anomal_folder, exist_ok=True)
+            save_base_folder = os.path.join(check_base_folder, anomal_folder)
+            os.makedirs(save_base_folder, exist_ok=True)
+            anomal_folder_dir = os.path.join(test_img_folder, anomal_folder)
+            rgb_folder = os.path.join(anomal_folder_dir, 'xray')
+            gt_folder = os.path.join(anomal_folder_dir, 'gt_pil')
+            rgb_imgs = os.listdir(rgb_folder)
+
+            for rgb_img in rgb_imgs:
+                name, ext = os.path.splitext(rgb_img)
+                rgb_img_dir = os.path.join(rgb_folder, rgb_img)
+                pil_img = Image.open(rgb_img_dir).convert('RGB')
+                org_h, org_w = pil_img.size
+
+                # [5.1] extracting feature from LoRA
+                input_ids, attention_mask = get_input_ids(tokenizer, args.prompt)
+                encoder_hidden_states = text_encoder(input_ids.to(text_encoder.device))["last_hidden_state"]
+                if args.text_truncate:
+                    encoder_hidden_states = encoder_hidden_states[:, :2, :]
+
+                # [5.2] img
+                input_img = pil_img
+                trg_h, trg_w = input_img.size
+                if accelerator.is_main_process:
+                    with torch.no_grad():
+                        img = np.array(input_img.resize((512, 512)))  # [512,512,3]
+                        image = torch.from_numpy(img).float() / 127.5 - 1
+                        image = image.permute(2, 0, 1).unsqueeze(0).to(vae.device, weight_dtype)  # [1,3,512,512]
+                        with torch.no_grad():
+                            latent = vae.encode(image.to(dtype=weight_dtype)).latent_dist.sample() * 0.18215
+
+                # [5.3] unet
+                with torch.no_grad():
+                    unet(latent, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
+                         noise_type=position_embedder)
+                query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
+                controller.reset()
+                q_dict = {}
+                for layer in args.trg_layer_list:
+                    query = query_dict[layer][0].squeeze()  # head, pix_num, dim
+                    head, pix_num, dim = query.shape
+                    res = int(pix_num ** 0.5)
+                    query = query.view(head, res, res, dim).permute(0, 3, 1, 2).mean(dim=0)
+                    q_dict[res] = query.unsqueeze(0)
+
+                # [5.4] segmenting
+                masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
 
 
 
