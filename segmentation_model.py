@@ -91,8 +91,8 @@ def main(args):
     optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params)
     lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
     segmentation_model = transform_models_if_DDP([segmentation_model])[0]
-    segmentation_model, optimizer, train_dataloader, test_dataloader, lr_scheduler, loss_multi_focal = accelerator.prepare(segmentation_model, optimizer,
-                                                                       train_dataloader, test_dataloader, lr_scheduler, loss_multi_focal)
+    segmentation_model, optimizer, train_dataloader, test_dataloader, lr_scheduler = accelerator.prepare(segmentation_model, optimizer,
+                                                                       train_dataloader, test_dataloader, lr_scheduler)
 
     print(f'\n step 10. Training !')
     progress_bar = tqdm(range(args.max_train_steps), smoothing=0,
@@ -135,6 +135,7 @@ def main(args):
             # target = true mask
             loss = criterion(masks_pred, true_masks)
             if args.multiclassification_focal_loss :
+                loss_multi_focal.to(accelerator.device)
                 masks_pred = masks_pred.permute(0,2,3,1)
                 c = masks_pred.shape[-1]
                 masks_pred = masks_pred.view(-1, c)
