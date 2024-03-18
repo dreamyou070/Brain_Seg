@@ -136,7 +136,7 @@ def main(args):
             loss = criterion(masks_pred, true_mask_one_hot_matrix)
             if args.multiclassification_focal_loss :
                 masks_pred_ = masks_pred.permute(0,2,3,1)
-                masks_pred_ = masks_pred_.view(-1, masks_pred.shape[-1])
+                masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
                 loss = loss_multi_focal(masks_pred_, # N,C
                                         true_mask_one_vector.squeeze().to(masks_pred.device)) # N
             loss_dict['cross_entropy_loss'] = loss.item()
