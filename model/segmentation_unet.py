@@ -153,7 +153,7 @@ class UNet2(nn.Module):
 class UNet3(nn.Module):
 
     def __init__(self, n_channels, n_classes, bilinear=False):
-        super(UNet2, self).__init__()
+        super(UNet3, self).__init__()
 
         self.n_classes = n_classes
         self.bilinear = bilinear
