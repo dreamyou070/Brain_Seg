@@ -31,7 +31,8 @@ def call_dataset(args) :
                                            resize_shape=[args.resize_shape, args.resize_shape],
                                            tokenizer=tokenizer,
                                            caption=args.trigger_word,
-                                           latent_res=args.latent_res, )
+                                           latent_res=args.latent_res,
+                                           num_classes = args.num_classes)
         test_dataset = train_dataset
 
     else :

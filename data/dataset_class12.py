@@ -199,16 +199,15 @@ class TrainDataset_Multi(Dataset):
         gt_array = np.load(gt_path)                      # [64,64]]
         gt_array = np.array(Image.fromarray(gt_array).resize((self.latent_res, self.latent_res)))
         gt_vector = torch.from_numpy(gt_array).flatten() # [4096]
-        print(f'gt_vector = {gt_vector.shape}')
 
 
         # (1) 64
-        base_gt = np.zeros((self.latent_res , self.latent_res, self.num_classes))
-        gt = to_categorical(gt_array)
-        h, w, c = gt.shape
-        base_gt[:, :, :c] = gt # [64,64,c]
+        base_gt = np.zeros((self.latent_res*self.latent_res, self.num_classes))
+        gt = to_categorical(gt_array.flatten()) # [4096,3]
+        p, c = gt.shape # max = 3
+        base_gt[:, :c] = gt # [64,64,c]
         base_gt = torch.from_numpy(base_gt)
-        base_gt = base_gt.permute(2,0,1) # [c,64,64]
+        #base_gt = base_gt.permute(2,0,1) # [c,64,64]
 
         # featire_64
         feature_64 = self.feature_64_list[idx]
@@ -224,7 +223,7 @@ class TrainDataset_Multi(Dataset):
         input_ids, attention_mask = self.get_input_ids(self.caption)  # input_ids = [77]
 
         return {'image': self.transform(img), # [3,512,512]
-                "gt" : base_gt,               # [64*64, 4]
+                "gt" : base_gt,               # [64*64, 3]
                 "gt_vector" : gt_vector,      # [4096]
                 "input_ids" : input_ids,
                 "feature_64" : feature_64,

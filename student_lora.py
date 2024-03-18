@@ -139,7 +139,7 @@ def main(args):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             # ------------------------------------------------------------------------------------------------------------
             image = batch['image'].to(dtype=weight_dtype)                    # 1,3, 512,512
-            gt = batch['gt'].to(dtype=weight_dtype).squeeze()                # 1, 64*64, 4
+            gt = batch['gt'].to(dtype=weight_dtype).squeeze()                # 1, 3, 64, 64
             gt_vector = batch['gt_vector'].to(dtype=weight_dtype).squeeze()  # 1, 64*64
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
     parser.add_argument("--do_class_weight", action='store_true')
     parser.add_argument("--train_class12", action='store_true')
-
+    parser.add_argument("--num_classes", type=int, default = 3)
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
