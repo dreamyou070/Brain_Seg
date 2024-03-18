@@ -164,9 +164,6 @@ def main(args):
             attention_scores = torch.baddbmm(torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
                                                          device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
             attn = attention_scores.softmax(dim=-1)[:, :, :3] # [head, 4096,3]
-            # gt = [4096]
-            print(f'attn = {attn.shape}')
-            print(f'gt = {gt.shape}')
             normal_activator.collect_attention_scores_multi(attn, gt) # here problem
             normal_activator.collect_anomal_map_loss_multi_crossentropy(attn, gt_vector)
 
