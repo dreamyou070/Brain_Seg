@@ -119,4 +119,4 @@ class UNet(nn.Module):
         return logits
 
 
-
+# x1 = torch.randn(1,40,64,64)

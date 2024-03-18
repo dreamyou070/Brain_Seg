@@ -56,7 +56,7 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
 
         for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch',
                           leave=False):
-            if global_num < 100:
+            if global_num < 10:
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
                 if args.text_truncate:
                     encoder_hidden_states = encoder_hidden_states[:, :2, :]
@@ -83,9 +83,9 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
                 # [1] pred
                 mask_pred_ = mask_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,64,64,4
                 mask_pred_argmax = np.argmax(mask_pred_, axis=3).flatten()
-                y_pred_list.append(mask_pred_argmax)
+                y_pred_list.append(torch.Tensor(mask_pred_argmax))
                 mask_true = true_mask_one_vector.detach().cpu().numpy().flatten()
-                y_true_list.append(mask_true)
+                y_true_list.append(torch.Tensor(mask_true))
 
                 # [2] dice coefficient
                 from utils.dice_score import dice_loss
@@ -94,7 +94,8 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
                                           multiclass=True)
                 dice_coeff_list.append(dice_coeff)
                 global_num += 1
-
+        a = np.random(64)
+        y_true_list = [a, a]
         y = torch.cat(y_true_list)
         y_hat = torch.cat(y_pred_list)
         from sklearn.metrics import confusion_matrix
@@ -109,3 +110,5 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
         dice_coeff = np.mean(np.array(dice_coeff_list))
     segmentation_model.train()
     return IOU_dict, mask_pred_argmax.squeeze(), dice_coeff
+
+
