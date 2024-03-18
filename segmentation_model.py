@@ -60,13 +60,13 @@ def main(args):
     if args.do_class_weight :
         class_weight = {0: 0.0027217850085457886, 1: 0.22609416133509747, 2: 0.17582554657020089, 3: 0.5953585070861559}
     dice_loss_fn = DiceLoss(mode='multiclass',
-                         classes=[0, 1, 2, 3],
-                         log_loss=True,
-                         from_logits=False,
-                         smooth=0.0,
-                         ignore_index=None,
-                         eps=1e-7,
-                            class_weight = class_weight)
+                           classes=[0, 1, 2, 3],
+                           log_loss=True,
+                           from_logits=False,
+                           smooth=0.0,
+                           ignore_index=None,
+                           eps=1e-7,
+                           class_weight = class_weight)
     text_encoders = transform_models_if_DDP([text_encoder])
     unet, network = transform_models_if_DDP([unet, network])
     if args.use_position_embedder:
