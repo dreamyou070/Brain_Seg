@@ -13,6 +13,7 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --main_process_port $port_number ../inference_segmentation_model.py \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
  --network_dim 64 --network_alpha 4 \
+ --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --data_path "/home/dreamyou070/MyData/anomaly_detection/${category}/${obj_name}/${benchmark}/val" \
  --network_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/2_binary_segmentation_BraTS2020/models/epoch-000033.safetensors" \
  --position_embedder_weights "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/2_binary_segmentation_BraTS2020/position_embedder/position_embedder_33.safetensors" \
