@@ -211,8 +211,11 @@ class TrainDataset_Multi(Dataset):
 
         # featire_64
         feature_64 = self.feature_64_list[idx] # dim, 64,64
+        feature_64 = torch.load(feature_64)
         feature_32 = self.feature_32_list[idx] # dim, 64,64
+        feature_32 = torch.load(feature_32)
         feature_16 = self.feature_16_list[idx]  # dim, 64,64
+        feature_16 = torch.load(feature_16)
 
 
         # [3] caption

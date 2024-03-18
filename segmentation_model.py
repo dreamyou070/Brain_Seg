@@ -161,7 +161,6 @@ def main(args):
                         query = query.view(head, res, res, dim).permute(0,3,1,2).mean(dim=0)
                         q_dict[res] = query.unsqueeze(0)
             else :
-
                 q_dict = {}
                 q_dict[64] = batch['feature_64']
                 q_dict[32] = batch['feature_32']
