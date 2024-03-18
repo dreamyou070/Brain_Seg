@@ -107,4 +107,3 @@ class Multiclass_FocalLoss(nn.Module):
         loss = F.nll_loss(logpt,
                           target.type(torch.LongTensor).to(logpt.device),)
         return loss
-

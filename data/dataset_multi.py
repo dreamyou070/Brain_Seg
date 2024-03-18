@@ -203,6 +203,6 @@ class TrainDataset_Multi(Dataset):
         input_ids, attention_mask = self.get_input_ids(self.caption)  # input_ids = [77]
 
         return {'image': self.transform(img), # [3,512,512]
-                "gt" : base_gt,                    # [64*64, 4]
+                "gt" : base_gt,               # [64*64, 4]
                 "gt_vector" : gt_vector,
                 "input_ids" : input_ids}
