@@ -26,6 +26,7 @@ def call_dataset(args) :
         root_dir = os.path.join(args.data_path, f'train')
         test_root_dir = os.path.join(args.data_path, f'val')
         from data.dataset_class12 import TrainDataset_Multi, TestDataset_Multi
+        print(f' dataset class 12')
         train_dataset = TrainDataset_Multi(root_dir=root_dir,
                                            resize_shape=[args.resize_shape, args.resize_shape],
                                            tokenizer=tokenizer,

@@ -199,6 +199,7 @@ class TrainDataset_Multi(Dataset):
         gt_array = np.load(gt_path)                      # [64,64]]
         gt_array = np.array(Image.fromarray(gt_array).resize((self.latent_res, self.latent_res)))
         gt_vector = torch.from_numpy(gt_array).flatten() # [4096]
+        print(f'gt_vector = {gt_vector.shape}')
 
 
         # (1) 64
