@@ -67,6 +67,15 @@ def main(args):
                            ignore_index=None,
                            eps=1e-7,
                            class_weight = class_weight)
+    dice_loss_anomal = DiceLoss(mode='multiclass',
+                            classes=[0, 1, 2, 3],
+                            log_loss=True,
+                            from_logits=False,
+                            smooth=0.0,
+                            ignore_index=0,
+                            eps=1e-7,
+                            class_weight=class_weight)
+
     text_encoders = transform_models_if_DDP([text_encoder])
     unet, network = transform_models_if_DDP([unet, network])
     if args.use_position_embedder:
@@ -153,16 +162,23 @@ def main(args):
                 masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
             # target = true mask
             loss = criterion(masks_pred, true_mask_one_hot_matrix)
+
+            # anomal pixel redistribute
             if args.multiclassification_focal_loss :
                 masks_pred_ = masks_pred.permute(0,2,3,1)
                 masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
                 loss = loss_multi_focal(masks_pred_, # N,C
                                         true_mask_one_vector.squeeze().to(masks_pred.device)) # N
             loss_dict['cross_entropy_loss'] = loss.item()
+
             # [2] Dice Loss
             y = true_mask_one_vector.view(64, 64).unsqueeze(dim=0)
-            loss += dice_loss_fn(y_pred = masks_pred,
-                                 y_true = y.unsqueeze(0).to(torch.int64))
+            if args.use_dice_anomal_loss :
+                loss += dice_loss_anomal(y_pred = masks_pred,
+                                     y_true = y.unsqueeze(0).to(torch.int64))
+            else :
+                loss += dice_loss_fn(y_pred = masks_pred,
+                                     y_true = y.unsqueeze(0).to(torch.int64))
             #loss += dice_loss(F.softmax(masks_pred, dim=1).float(), # class 0 ~ 4 check best
             #                  true_mask_one_hot_matrix,             # true_masks = [1,4,64,64] (one-hot_
             #                  multiclass=True)
@@ -325,6 +341,7 @@ if __name__ == "__main__":
     parser.add_argument("--do_class_weight", action='store_true')
     parser.add_argument("--text_truncate", action='store_true')
     parser.add_argument("--segment_use_raw_latent", action='store_true')
+    parser.add_argument("--use_dice_anomal_loss", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
