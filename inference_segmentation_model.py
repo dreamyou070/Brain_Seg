@@ -244,8 +244,8 @@ def main(args):
                     position = np.repeat(position, 3, axis=2)
                     position_color = position * colors[c]
                     rgb_pred += position_color
-                rgb_pil = Image.fromarray(rgb_pred)
 
+                rgb_pil = Image.fromarray((rgb_pred).astype(np.uint8)).convert('L')
                 name = os.path.splitext(rgb_img)
                 rgb_pil.save(os.path.join(save_base_folder, f'{name}_pred.jpg'))
                 import shutil
