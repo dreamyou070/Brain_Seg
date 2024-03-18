@@ -234,7 +234,7 @@ def main(args):
                 import torch.nn.functional as F
                 masks_pred = F.softmax(masks_pred, dim=1).unsqueeze(0).detach().cpu().numpy()
                 masks_pred = np.argmax(masks_pred, axis=0) #
-                rgb_pred = np.zeros(64,64,3)
+                rgb_pred = np.zeros((64,64,3))
 
                 n_classes = 4
                 colors = [[0,0,0], [255,0,0], [0,255,0], [0,0,255]]
