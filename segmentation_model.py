@@ -114,6 +114,11 @@ def main(args):
         segmentation_model = UNet3(n_channels=4,
                                    n_classes=args.n_classes,
                                    bilinear=False)
+    if args.pretrained_segmentation_model :
+        from safetensors.torch import load_file
+        segmentation_model.load_state_dict(load_file(args.pretrained_segmentation_model))
+        # segmentation_seg_based_lora
+
 
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
     trainable_params = []
@@ -181,6 +186,7 @@ def main(args):
             loss = criterion(masks_pred,
                              true_mask_one_hot_matrix)
 
+            """
             if args.seg_based_lora :
                 q_out_64_target = q_dict[64]
                 q_out_32_target = q_dict[32]
@@ -189,7 +195,7 @@ def main(args):
                 query_loss += loss_l2(q_out_32.float(), q_out_32_target.float()).mean()
                 query_loss += loss_l2(q_out_16.float(), q_out_16_target.float()).mean()
                 loss += query_loss
-
+            """
             # anomal pixel redistribute
             if args.multiclassification_focal_loss :
                 masks_pred_ = masks_pred.permute(0,2,3,1)

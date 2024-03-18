@@ -25,4 +25,6 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_config \
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --do_attn_loss --do_cls_train \
  --resize_shape 512 --latent_res 64 --multiclassification_focal_loss --multiclassification_focal_loss \
- --seg_based_lora --train_class12
+ --seg_based_lora --train_class12 \
+ --num_classes 3 \
+ --pretrained_segmentation_model "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/segmentation_seg_based_lora/segmentation_87.safetensors"

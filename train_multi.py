@@ -314,7 +314,7 @@ if __name__ == "__main__":
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
     parser.add_argument("--do_class_weight", action='store_true')
     parser.add_argument("--train_class12", action='store_true')
-
+    parser.add_argument("--pretrained_segmentation_model", type=str)
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
