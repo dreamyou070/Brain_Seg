@@ -32,7 +32,7 @@ def call_dataset(args) :
                                            tokenizer=tokenizer,
                                            caption=args.trigger_word,
                                            latent_res=args.latent_res,
-                                           num_classes = args.num_classes)
+                                           num_classes = args.n_classes)
         test_dataset = train_dataset
 
     else :
