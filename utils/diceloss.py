@@ -136,7 +136,7 @@ class DiceLoss(_Loss):
         else :
             return soft_dice_score(output, target, smooth, eps, dims)
 
-"""
+
 dice_loss = DiceLoss(mode = 'multiclass',
                      classes = [0,1,2,3],
                      log_loss = True,
@@ -144,12 +144,14 @@ dice_loss = DiceLoss(mode = 'multiclass',
                      smooth = 0.0,
                      ignore_index = None,
                      eps = 1e-7,)
+"""
 y_true = torch.Tensor([[0,1,2],
                        [3,1,2],
                        [3,0,2]]).to(torch.int64)
-print(y_true.shape)
-
+y_true = y_true.unsqueeze(0)
 y_pred = torch.randn((1,4,3,3))
+dice_loss(y_pred, y_true, )
+
 # [1]
 bs = y_true.size(0)
 num_classes = y_pred.size(1)

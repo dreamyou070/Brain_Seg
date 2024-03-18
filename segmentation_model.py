@@ -152,10 +152,9 @@ def main(args):
                                         true_mask_one_vector.squeeze().to(masks_pred.device)) # N
             loss_dict['cross_entropy_loss'] = loss.item()
             # [2] Dice Loss
-
+            y = true_mask_one_vector.view(64, 64).unsqueeze()
             loss += dice_loss_fn(y_pred = masks_pred,
-                                 y_true = true_mask_one_vector.view(64,64))
-
+                                 y_true = y.unsqueeze(0))
             #loss += dice_loss(F.softmax(masks_pred, dim=1).float(), # class 0 ~ 4 check best
             #                  true_mask_one_hot_matrix,             # true_masks = [1,4,64,64] (one-hot_
             #                  multiclass=True)
