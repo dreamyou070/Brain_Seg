@@ -377,6 +377,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_classes", default=4, type=int)
     parser.add_argument("--lora_inference", action='store_true')
     parser.add_argument("--train_class12", action='store_true')
+    parser.add_argument("--pretrained_segmentation_model", type=str)
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
