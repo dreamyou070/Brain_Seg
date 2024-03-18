@@ -224,7 +224,7 @@ class TrainDataset_Multi(Dataset):
 
         return {'image': self.transform(img), # [3,512,512]
                 "gt" : base_gt,               # [64*64, 4]
-                "gt_vector" : gt_vector,
+                "gt_vector" : gt_vector,      # [4096]
                 "input_ids" : input_ids,
                 "feature_64" : feature_64,
                 "feature_32": feature_32,
