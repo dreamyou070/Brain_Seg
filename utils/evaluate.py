@@ -92,7 +92,7 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
                 dice_coeff = 1-dice_loss(F.softmax(mask_pred, dim=1).float(),  # class 0 ~ 4 check best
                                           true_mask_one_hot_matrix,  # true_masks = [1,4,64,64] (one-hot_
                                           multiclass=True)
-                dice_coeff_list.append(dice_coeff)
+                dice_coeff_list.append(dice_coeff.detach().cpu())
                 global_num += 1
         y = torch.cat(y_true_list)
         y_hat = torch.cat(y_pred_list)
