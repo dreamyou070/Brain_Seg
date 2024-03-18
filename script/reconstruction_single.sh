@@ -3,7 +3,7 @@
 port_number=50044
 category="medical"
 obj_name="brain"
-benchmark="BraTS2020_Segmentation_class_1"
+benchmark="BraTS2020_Segmentation_class_3"
 trigger_word='brain'
 layer_name='layer_3'
 sub_folder="up_16_32_64"
