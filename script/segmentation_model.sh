@@ -6,7 +6,7 @@ obj_name="brain"
 benchmark="BraTS2020_Segmentation_128"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="21_segmentation_model_128"
+file_name="22_segmentation_model_128_gpu1"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --main_process_port $port_number ../segmentation_model.py --log_with wandb \

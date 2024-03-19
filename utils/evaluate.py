@@ -120,5 +120,3 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
         dice_coeff = np.mean(np.array(dice_coeff_list))
     segmentation_head.train()
     return IOU_dict, mask_pred_argmax.squeeze(), dice_coeff
-
-
