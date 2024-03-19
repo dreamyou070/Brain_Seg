@@ -5,5 +5,7 @@ files = os.listdir(base_folder)
 for file in files :
     file_dir = os.path.join(base_folder, file)
     arr = np.load(file_dir)
+    arr = np.where(arr == 4, 3, arr)
     unique_value = np.unique(arr)
+
     print(unique_value)
