@@ -1,11 +1,15 @@
-import os
+import os, shutil
 import numpy as np
-base_folder = r'D:\medical\brain\data\Br35H_Brain_Tumor_Detection_128\train\mask_128'
-files = os.listdir(base_folder)
-for file in files :
-    file_dir = os.path.join(base_folder, file)
-    arr = np.load(file_dir)
-    arr = np.where(arr == 4, 3, arr)
-    unique_value = np.unique(arr)
 
-    print(unique_value)
+base_folder = r'home/dreamyou070/MyData/anomaly_detection/medical\brain\BraTS2020_Segmentation_128\train'
+image_folder = os.path.join(base_folder, 'image_128')
+mask_folder = os.path.join(base_folder, 'mask_128')
+masks = os.listdir(mask_folder)
+print(f'present mask num = {len(masks)}')
+images = os.listdir(image_folder)
+for file in images :
+    name, ext = os.path.splitext(file)
+    if ext == '.npy' :
+        org_img_dir = os.path.join(image_folder, file)
+        #new_dr = os.path.join()
+        #os.remove(org_img_dir)
