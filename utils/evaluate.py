@@ -42,6 +42,17 @@ def evaluate(segmentation_model, dataloader, device, text_encoder, unet, vae, co
     return dice_score
 
 
+def reshape_batch_dim_to_heads(tensor):
+    batch_size, seq_len, dim = tensor.shape
+    head_size = 8
+    tensor = tensor.reshape(batch_size // head_size, head_size, seq_len,
+                            dim)  # 1,8,pix_num, dim -> 1,pix_nun, 8,dim
+    tensor = tensor.permute(0, 2, 1, 3).reshape(batch_size // head_size, seq_len,
+                                                dim * head_size)  # 1, pix_num, long_dim
+    res = int(seq_len ** 0.5)
+    tensor = tensor.view(batch_size // head_size, res, res, dim * head_size)
+    tensor = tensor.permute(0, 3, 1, 2)
+    return tensor
 
 @torch.inference_mode()
 def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, vae, controller, weight_dtype,
@@ -55,6 +66,7 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
         dice_coeff_list = []
 
         for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
+
             if global_num < 10:
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
                 if args.text_truncate:
@@ -70,19 +82,6 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
                 controller.reset()
                 q_dict = {}
-
-                def reshape_batch_dim_to_heads(tensor):
-                    batch_size, seq_len, dim = tensor.shape
-                    head_size = 8
-                    tensor = tensor.reshape(batch_size // head_size, head_size, seq_len,
-                                            dim)  # 1,8,pix_num, dim -> 1,pix_nun, 8,dim
-                    tensor = tensor.permute(0, 2, 1, 3).reshape(batch_size // head_size, seq_len,
-                                                                dim * head_size)  # 1, pix_num, long_dim
-                    res = int(seq_len ** 0.5)
-                    tensor = tensor.view(batch_size // head_size, res, res, dim * head_size)
-                    tensor = tensor.permute(0, 3, 1, 2)
-                    return tensor
-
                 for layer in args.trg_layer_list:
                     query = query_dict[layer][0].squeeze()  # head, pix_num, dim
                     # resizing
@@ -99,14 +98,13 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 y_pred_list.append(torch.Tensor(mask_pred_argmax))
                 mask_true = gt_flat.detach().cpu().numpy().flatten()
                 y_true_list.append(torch.Tensor(mask_true))
-
                 # [2] dice coefficient
                 from utils.dice_score import dice_loss
                 dice_coeff = 1-dice_loss(F.softmax(masks_pred, dim=1).float(),  # class 0 ~ 4 check best
-                                          gt,  # true_masks = [1,4,64,64] (one-hot_
-                                          multiclass=True)
+                                          gt,multiclass=True)
                 dice_coeff_list.append(dice_coeff.detach().cpu())
-                global_num += 1
+
+            global_num += 1
 
 
         y = torch.cat(y_true_list)
