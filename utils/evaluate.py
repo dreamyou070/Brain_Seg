@@ -65,9 +65,10 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
         y_true_list, y_pred_list = [], []
         dice_coeff_list = []
 
-        for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
+        #for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
+        for global_num, batch in enumerate(dataloader):
 
-            if global_num < 10:
+            if global_num < 2:
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
                 if args.text_truncate:
                     encoder_hidden_states = encoder_hidden_states[:, :2, :]
@@ -103,8 +104,6 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 dice_coeff = 1-dice_loss(F.softmax(masks_pred, dim=1).float(),  # class 0 ~ 4 check best
                                           gt,multiclass=True)
                 dice_coeff_list.append(dice_coeff.detach().cpu())
-
-            global_num += 1
 
 
         y = torch.cat(y_true_list)

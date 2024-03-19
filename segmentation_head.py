@@ -189,9 +189,11 @@ def main(args):
             loss_dict['focal_loss'] = focal_loss.item()
             # [5.3] Dice Loss
             
-            #y = gt_flat.view(128,128).unsqueeze(dim=0)
+            #y = gt_flat.view(128,128) # [128,128]
             #if args.use_dice_anomal_loss:
-            #    dice_loss = dice_loss_anomal(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
+            #    dice_loss = dice_loss_anomal(y_pred=masks_pred, # 
+                                              y_true=y.unsqueeze(0).to(torch.int64) # 
+                                              )
             #    loss += dice_loss
             #else:
             #    dice_loss = dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
