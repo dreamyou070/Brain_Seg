@@ -159,10 +159,10 @@ def main(args):
                 batch_size, seq_len, dim = tensor.shape
                 head_size = 8
                 tensor = tensor.reshape(batch_size // head_size, head_size, seq_len, dim) # 1,8,pix_num, dim -> 1,pix_nun, 8,dim
-                tensor = tensor.permute(0, 2, 1, 3).reshape(batch_size // head_size, seq_len, dim * head_size) # 1, pix_num, long_dim
+                tensor = tensor.permute(0, 2, 1, 3).contiguous().reshape(batch_size // head_size, seq_len, dim * head_size) # 1, pix_num, long_dim
                 res = int(seq_len ** 0.5)
-                tensor = tensor.view(batch_size // head_size, res,res, dim * head_size)
-                tensor = tensor.permute(0,3,1,2) # 1, dim, res,res
+                tensor = tensor.view(batch_size // head_size, res,res, dim * head_size).contiguous()
+                tensor = tensor.permute(0,3,1,2).contiguous()  # 1, dim, res,res
                 return tensor
 
             for layer in args.trg_layer_list:
