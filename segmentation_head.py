@@ -200,8 +200,6 @@ def main(args):
             #else:
             #    dice_loss = dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
             #    loss += dice_loss
-            print(f'loss = {loss}')
-            
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
             if epoch == args.start_epoch:
