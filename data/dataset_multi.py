@@ -145,7 +145,7 @@ class TrainDataset_Seg(Dataset):
         class_num = gt_arr_.shape[-1]
         gt = np.zeros((128,128,4))
         gt[:,:,:class_num] = gt_arr_
-        gt = gt.permute(2,0,1)        # 4,128,128
+        gt = torch.tensor(gt).permute(2,0,1)        # 4,128,128
 
         # [3] gt flatten
         gt_flat = gt_arr.flatten() # 128*128
