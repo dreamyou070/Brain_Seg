@@ -183,7 +183,7 @@ class UNet3(nn.Module):
 
 class Segmentation_Head(nn.Module):
 
-    def __init__(self, n_channels, n_classes, bilinear=False):
+    def __init__(self,  n_classes, bilinear=False):
         super(Segmentation_Head, self).__init__()
 
         self.n_classes = n_classes
