@@ -67,9 +67,7 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
 
         #for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
         for global_num, batch in enumerate(dataloader):
-            print(f'global_num = {global_num}')
-
-            if global_num < 2:
+            if global_num < 100 :
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
                 if args.text_truncate:
                     encoder_hidden_states = encoder_hidden_states[:, :2, :]
@@ -95,11 +93,13 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 #######################################################################################################################
                 # segmentation model
                 # [1] pred
-                mask_pred_ = masks_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,64,64,4
-                mask_pred_argmax = np.argmax(mask_pred_, axis=3).flatten()
+                mask_pred_ = masks_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,128,128,4
+                mask_pred_argmax = np.argmax(mask_pred_, axis=3).flatten()          # 128*128
                 y_pred_list.append(torch.Tensor(mask_pred_argmax))
-                mask_true = gt_flat.detach().cpu().numpy().flatten()
+
+                mask_true = gt_flat.detach().cpu().numpy().flatten()                # 128*128
                 y_true_list.append(torch.Tensor(mask_true))
+
                 # [2] dice coefficient
                 from utils.dice_score import dice_loss
                 dice_coeff = 1-dice_loss(F.softmax(masks_pred, dim=1).float(),  # class 0 ~ 4 check best
@@ -107,9 +107,8 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 dice_coeff_list.append(dice_coeff.detach().cpu())
             else :
                 break
-        y = torch.cat(y_true_list)
         y_hat = torch.cat(y_pred_list)
-
+        y = torch.cat(y_true_list)
         score = confusion_matrix(y, y_hat)
         actual_axis, pred_axis = score.shape
         IOU_dict = {}
