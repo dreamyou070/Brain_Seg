@@ -191,33 +191,28 @@ class Segmentation_Head(nn.Module):
         factor = 2 if bilinear else 1
         self.up1 = (Up(1280, 640 // factor, bilinear))
         self.up2 = (Up(640, 320 // factor, bilinear))
-        self.up3 = (Up(320, 160 // factor, bilinear))
+        self.up3 = (Up_conv(320, bilinear))
         self.outc = (OutConv(160, n_classes))
 
     def forward(self, x16_out, x32_out, x64_out):
 
-        x1_out = self.up1(x16_out)  # 1,640,32,32
-        x2_in = x1_out + x32_out    # 1,640,32,32
-        x2_out = self.up2(x2_in)    # 1,320,64,64
-        x3_in = x2_out + x64_out    # 1,320,64,64
+        x1_out = self.up1(x16_out,x32_out)  # 1,640,32,32
+        x2_in = x1_out     # 1,640,32,32
+        x2_out = self.up2(x2_in, x64_out)    # 1,320,64,64
+        x3_in = x2_out    # 1,320,64,64
         x3_out = self.up3(x3_in)    # 1,160,128,128
         logits = self.outc(x3_out)  # 1,4, 128,128
         return logits
 
+# x16_out, x32_out, x64_out = [1,dim,res,res]
+#x1 = torch.randn(1,320,64,64)
+#x2 = torch.randn(1,640,32,32)
+#x3 = torch.randn(1,1280,16,16)
+#unet_model = Segmentation_Head(n_classes=4)
+#output = unet_model(x3,x2,x1)
+#print(output.shape)
 """
-x1 = torch.randn(1,40,64,64)
-x2 = torch.randn(1,80,32,32)
-x3 = torch.randn(1,160,16,16)
-unet_model = UNet3(n_channels=4, n_classes=4)
-input = torch.randn(1,4,64,64)
-output = unet_model(input)3_out
-x1_out, x2_out, x3_out, logits = output
-print(f'x1_out = {x1_out.shape}')
-print(f'x2_out = {x2_out.shape}')
-print(f'x3_out = {x3_out.shape}')
-print(f'logits = {logits.shape}')
-"""
-"""
+
 # 
 class UNet2(nn.Module):
     def __init__(self, n_classes, bilinear=False):
