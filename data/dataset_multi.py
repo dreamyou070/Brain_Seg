@@ -88,10 +88,10 @@ class TrainDataset_Seg(Dataset):
             folder_dir = os.path.join(self.root_dir, folder)
             rgb_folder = os.path.join(folder_dir, 'image_128')
             gt_folder = os.path.join(folder_dir, 'mask_128') # [128,128]
-            images = os.listdir(rgb_folder)
-            for image in images:
-                name, ext = os.path.splitext(image)
-                image_paths.append(os.path.join(rgb_folder, image))
+            files = os.listdir(gt_folder)
+            for file in files:
+                name, ext = os.path.splitext(file)
+                image_paths.append(os.path.join(rgb_folder, f'{name}.jpg'))
                 gt_paths.append(os.path.join(gt_folder, f'{name}.npy'))
 
         self.resize_shape = resize_shape

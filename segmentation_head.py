@@ -177,7 +177,6 @@ def main(args):
             # [5.1] Multiclassification Loss
 
             loss = criterion(masks_pred, gt)
-            print(f'loss1 = {loss.shape}')
             loss_dict['cross_entropy_loss'] = loss.item()
 
             # [5.2] Focal Loss
@@ -185,7 +184,6 @@ def main(args):
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
             focal_loss = loss_multi_focal(masks_pred_,  # N,C
                                           gt_flat.squeeze().to(masks_pred.device))  # N
-            print(f'loss2 = {focal_loss.shape}')
             loss += focal_loss
             loss_dict['focal_loss'] = focal_loss.item()
             # [5.3] Dice Loss
@@ -196,8 +194,8 @@ def main(args):
             else:
                 dice_loss = dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
                 loss += dice_loss
-            print(f'loss3 = {dice_loss.shape}')
 
+            """
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
             if epoch == args.start_epoch:
@@ -219,6 +217,7 @@ def main(args):
                 progress_bar.set_postfix(**loss_dict)
             if global_step >= args.max_train_steps:
                 break
+            """
         # ----------------------------------------------------------------------------------------------------------- #
         # [6] epoch final
         accelerator.wait_for_everyone()
