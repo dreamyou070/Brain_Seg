@@ -95,6 +95,8 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                                           multiclass=True)
                 dice_coeff_list.append(dice_coeff.detach().cpu())
                 global_num += 1
+
+
         y = torch.cat(y_true_list)
         y_hat = torch.cat(y_pred_list)
 

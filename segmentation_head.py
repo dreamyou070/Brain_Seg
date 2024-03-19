@@ -139,6 +139,7 @@ def main(args):
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
             loss_dict = {}
+            """
             with torch.set_grad_enabled(True):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
                 if args.text_truncate :
@@ -178,27 +179,24 @@ def main(args):
 
             loss = criterion(masks_pred, gt)
             loss_dict['cross_entropy_loss'] = loss.item()
-            print(f'loss1 = {loss}')
 
             # [5.2] Focal Loss
             masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
             focal_loss = loss_multi_focal(masks_pred_,  # N,C
                                           gt_flat.squeeze().to(masks_pred.device))  # N
-            print(f'loss2 = {focal_loss}')
             loss += focal_loss
             loss_dict['focal_loss'] = focal_loss.item()
             # [5.3] Dice Loss
-            """
-            y = gt_flat.view(128,128).unsqueeze(dim=0)
-            if args.use_dice_anomal_loss:
-                dice_loss = dice_loss_anomal(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
-                loss += dice_loss
-            else:
-                dice_loss = dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
-                loss += dice_loss
-            print(f'loss3 = {dice_loss}')
-            """
+            
+            #y = gt_flat.view(128,128).unsqueeze(dim=0)
+            #if args.use_dice_anomal_loss:
+            #    dice_loss = dice_loss_anomal(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
+            #    loss += dice_loss
+            #else:
+            #    dice_loss = dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
+            #    loss += dice_loss
+            
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
             if epoch == args.start_epoch:
@@ -220,7 +218,7 @@ def main(args):
                 progress_bar.set_postfix(**loss_dict)
             if global_step >= args.max_train_steps:
                 break
-            
+            """
         # ----------------------------------------------------------------------------------------------------------- #
         # [6] epoch final
         accelerator.wait_for_everyone()
