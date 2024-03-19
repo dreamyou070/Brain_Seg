@@ -67,6 +67,7 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
 
         #for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
         for global_num, batch in enumerate(dataloader):
+            print(f'global_num = {global_num}')
 
             if global_num < 2:
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
