@@ -181,7 +181,7 @@ def main(args):
             #                 gt)         # 1,4,128,128
 
             loss = criterion(masks_pred_,  # 1,4,128,128
-                             gt_flat.squeeze())  # 128*128
+                             gt_flat.squeeze().to(torch.long))  # 128*128
 
 
             loss_dict['cross_entropy_loss'] = loss.item()
