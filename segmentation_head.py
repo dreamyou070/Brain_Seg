@@ -173,10 +173,17 @@ def main(args):
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
             # x16_out, x32_out, x64_out = [1,dim,res,res]
             masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
-
+            masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
+            masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
             # [5.1] Multiclassification Loss
 
-            loss = criterion(masks_pred, gt)
+            #loss = criterion(masks_pred, # 1,4,128,128
+            #                 gt)         # 1,4,128,128
+
+            loss = criterion(masks_pred_,  # 1,4,128,128
+                             gt_flat.squeeze())  # 128*128
+
+
             loss_dict['cross_entropy_loss'] = loss.item()
 
             # [5.2] Focal Loss
