@@ -219,6 +219,7 @@ def main(args):
             if global_step >= args.max_train_steps:
                 break
             """
+            break
         # ----------------------------------------------------------------------------------------------------------- #
         # [6] epoch final
         accelerator.wait_for_everyone()

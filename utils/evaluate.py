@@ -46,7 +46,7 @@ def evaluate(segmentation_model, dataloader, device, text_encoder, unet, vae, co
 @torch.inference_mode()
 def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, vae, controller, weight_dtype,
                   position_embedder, args):
-    segmentation_model.eval()
+    segmentation_head.eval()
     num_val_batches = len(dataloader)
     # iterate over the validation set
     with torch.no_grad():
