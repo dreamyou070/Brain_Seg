@@ -168,11 +168,7 @@ def main(args):
             for layer in args.trg_layer_list:
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
                 # resizing
-
-                #query = query.mean(dim=0).squeeze()
-                query = query.permute(1,0) # dim, pix_num
-                res = int(query.shape[-1] ** 0.5)
-                #query = query.view(-1, res,res).unsqueeze(0)
+                res = int(query.shape[1] ** 0.5)
                 q_dict[res] = reshape_batch_dim_to_heads(query)
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
             # x16_out, x32_out, x64_out = [1,dim,res,res]
