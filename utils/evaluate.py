@@ -105,8 +105,8 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 dice_coeff = 1-dice_loss(F.softmax(masks_pred, dim=1).float(),  # class 0 ~ 4 check best
                                           gt,multiclass=True)
                 dice_coeff_list.append(dice_coeff.detach().cpu())
-
-
+            else :
+                break
         y = torch.cat(y_true_list)
         y_hat = torch.cat(y_pred_list)
 
