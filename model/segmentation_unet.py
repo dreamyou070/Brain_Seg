@@ -205,12 +205,17 @@ class Segmentation_Head(nn.Module):
         return logits
 
 # x16_out, x32_out, x64_out = [1,dim,res,res]
-#x1 = torch.randn(1,320,64,64)
-#x2 = torch.randn(1,640,32,32)
-#x3 = torch.randn(1,1280,16,16)
-#unet_model = Segmentation_Head(n_classes=4)
+x1 = torch.randn(1,320, 64,64)
+x2 = torch.randn(1,640,32,32)
+x3 = torch.randn(1,1280, 16,16)
+segmentation_head = Segmentation_Head(n_classes=4)
 #output = unet_model(x3,x2,x1)
 #print(output.shape)
+
+x16_out, x32_out, x64_out = x3,x2,x1
+# x16_out, x32_out, x64_out = [1,dim,res,res]
+masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
+print(f'masks_pred = {masks_pred.shape}')
 """
 
 # 

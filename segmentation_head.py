@@ -162,37 +162,39 @@ def main(args):
                 tensor = tensor.permute(0, 2, 1, 3).reshape(batch_size // head_size, seq_len, dim * head_size) # 1, pix_num, long_dim
                 res = int(seq_len ** 0.5)
                 tensor = tensor.view(batch_size // head_size, res,res, dim * head_size)
-                tensor = tensor.permute(0,3,1,2)
+                tensor = tensor.permute(0,3,1,2) # 1, dim, res,res
                 return tensor
 
             for layer in args.trg_layer_list:
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
                 # resizing
                 res = int(query.shape[1] ** 0.5)
-                q_dict[res] = reshape_batch_dim_to_heads(query)
+                q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
             # x16_out, x32_out, x64_out = [1,dim,res,res]
             masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
+            print(f'masks_pred (1,4,128,128) = {masks_pred.shape}')
             masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
+            print(f'masks_pred_ (1,128,128,4) = {masks_pred_.shape}')
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
+            print(f'masks_pred_ (128*128,4) = {masks_pred_.shape}')
             # [5.1] Multiclassification Loss
 
             #loss = criterion(masks_pred, # 1,4,128,128
             #                 gt)         # 1,4,128,128
+            print(f'gt_flat.squeeze() (128*128) = {gt_flat.squeeze().shape}')
 
             loss = criterion(masks_pred_,  # 1,4,128,128
                              gt_flat.squeeze().to(torch.long))  # 128*128
-
-
             loss_dict['cross_entropy_loss'] = loss.item()
 
             # [5.2] Focal Loss
             #masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
             #masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
-            #focal_loss = loss_multi_focal(masks_pred_,  # N,C
-            #                              gt_flat.squeeze().to(masks_pred.device))  # N
-            #loss += focal_loss
-            #loss_dict['focal_loss'] = focal_loss.item()
+            focal_loss = loss_multi_focal(masks_pred_,  # N,C
+                                          gt_flat.squeeze().to(masks_pred.device))  # N
+            loss += focal_loss
+            loss_dict['focal_loss'] = focal_loss.item()
             # [5.3] Dice Loss
             
             #y = gt_flat.view(128,128) # [128,128]
