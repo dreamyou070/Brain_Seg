@@ -189,6 +189,7 @@ def main(args):
             loss += focal_loss
             loss_dict['focal_loss'] = focal_loss.item()
             # [5.3] Dice Loss
+            """
             y = gt_flat.view(128,128).unsqueeze(dim=0)
             if args.use_dice_anomal_loss:
                 dice_loss = dice_loss_anomal(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
@@ -197,7 +198,6 @@ def main(args):
                 dice_loss = dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
                 loss += dice_loss
             print(f'loss3 = {dice_loss}')
-
             """
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
@@ -220,7 +220,7 @@ def main(args):
                 progress_bar.set_postfix(**loss_dict)
             if global_step >= args.max_train_steps:
                 break
-            """
+            
         # ----------------------------------------------------------------------------------------------------------- #
         # [6] epoch final
         accelerator.wait_for_everyone()
