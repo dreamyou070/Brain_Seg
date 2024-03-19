@@ -180,12 +180,12 @@ def main(args):
             loss_dict['cross_entropy_loss'] = loss.item()
 
             # [5.2] Focal Loss
-            masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
-            masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
-            focal_loss = loss_multi_focal(masks_pred_,  # N,C
-                                          gt_flat.squeeze().to(masks_pred.device))  # N
-            loss += focal_loss
-            loss_dict['focal_loss'] = focal_loss.item()
+            #masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
+            #masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
+            #focal_loss = loss_multi_focal(masks_pred_,  # N,C
+            #                              gt_flat.squeeze().to(masks_pred.device))  # N
+            #loss += focal_loss
+            #loss_dict['focal_loss'] = focal_loss.item()
             # [5.3] Dice Loss
             
             #y = gt_flat.view(128,128) # [128,128]
