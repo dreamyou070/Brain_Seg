@@ -177,6 +177,7 @@ def main(args):
             # [5.1] Multiclassification Loss
             loss = criterion(masks_pred, gt)
             loss_dict['cross_entropy_loss'] = loss.item()
+            """
             # [5.2] Focal Loss
             masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
@@ -190,7 +191,7 @@ def main(args):
                 loss += dice_loss_anomal(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
             else:
                 loss += dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
-
+            """
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
             if epoch == args.start_epoch:
