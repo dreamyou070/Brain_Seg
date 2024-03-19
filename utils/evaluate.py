@@ -70,15 +70,27 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
                 controller.reset()
                 q_dict = {}
+
+                def reshape_batch_dim_to_heads(tensor):
+                    batch_size, seq_len, dim = tensor.shape
+                    head_size = 8
+                    tensor = tensor.reshape(batch_size // head_size, head_size, seq_len,
+                                            dim)  # 1,8,pix_num, dim -> 1,pix_nun, 8,dim
+                    tensor = tensor.permute(0, 2, 1, 3).reshape(batch_size // head_size, seq_len,
+                                                                dim * head_size)  # 1, pix_num, long_dim
+                    res = int(seq_len ** 0.5)
+                    tensor = tensor.view(batch_size // head_size, res, res, dim * head_size)
+                    tensor = tensor.permute(0, 3, 1, 2)
+                    return tensor
+
                 for layer in args.trg_layer_list:
                     query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                    query = query.mean(dim=0).squeeze()
-                    query = query.permute(1, 0)  # dim, pix_num
-                    res = int(query.shape[-1] ** 0.5)
-                    query = query.view(-1, res, res)
-                    q_dict[res] = query
+                    # resizing
+                    res = int(query.shape[1] ** 0.5)
+                    q_dict[res] = reshape_batch_dim_to_heads(query)
                 x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
-                masks_pred = segmentation_head(x16_out, x32_out, x64_out)
+                # x16_out, x32_out, x64_out = [1,dim,res,res]
+                masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
                 #######################################################################################################################
                 # segmentation model
                 # [1] pred
