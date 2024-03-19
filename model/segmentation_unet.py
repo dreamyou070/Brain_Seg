@@ -164,8 +164,9 @@ class UNet3(nn.Module):
         factor = 2 if bilinear else 1
         self.up1 = (Up(320, 160 // factor, bilinear))
         self.up2 = (Up(160, 80 // factor, bilinear))
-        self.up3 = (Up_conv(80, bilinear))
-        self.outc = (OutConv(40, n_classes))
+        self.up3 = (Up(80, 40 // factor, bilinear))
+        self.up4 = (Up_conv(40, bilinear))
+        self.outc = (OutConv(20, n_classes))
 
     def forward(self, x):
         # x = [1,4,64,64]
@@ -173,21 +174,51 @@ class UNet3(nn.Module):
         x1_out = self.down1(x_out)    # 1,80,32,32
         x2_out = self.down2(x1_out)   # 1,160,16,16
         x3_out = self.down3(x2_out)   # 1,320,8,8
-        x = self.up1(x3_out, x2_out)
+        x = self.up1(x3_out, x2_out)  # 1,160,16,16
         x = self.up2(x, x1_out)       # 1,80, 32, 32
-        x = self.up3(x)               # 1, 40, 64,64
-        logits = self.outc(x)
+        x = self.up3(x, x_out)        # 1,40, 64,64
+        x = self.up4(x)                  # 1,20, 128, 128
+        logits = self.outc(x)         # 1,4, 128,128
         return x_out, x1_out, x2_out, logits
-unet_model = UNet3(n_channels=4, n_classes=3)
-x = torch.randn(1,4,64,64)
-out_64, out_32, out_16, logits = unet_model(x)
-print(f'out_64 = {out_64.shape}')
-print(f'out_32 = {out_32.shape}')
-print(f'out_16 = {out_16.shape}')
 
+class Segmentation_Head(nn.Module):
+
+    def __init__(self, n_channels, n_classes, bilinear=False):
+        super(Segmentation_Head, self).__init__()
+
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+        factor = 2 if bilinear else 1
+        self.up1 = (Up(1280, 640 // factor, bilinear))
+        self.up2 = (Up(640, 320 // factor, bilinear))
+        self.up3 = (Up(320, 160 // factor, bilinear))
+        self.outc = (OutConv(160, n_classes))
+
+    def forward(self, x16_out, x32_out, x64_out):
+
+        x1_out = self.up1(x16_out)  # 1,640,32,32
+        x2_in = x1_out + x32_out    # 1,640,32,32
+        x2_out = self.up2(x2_in)    # 1,320,64,64
+        x3_in = x2_out + x64_out    # 1,320,64,64
+        x3_out = self.up3(x3_in)    # 1,160,128,128
+        logits = self.outc(x3_out)  # 1,4, 128,128
+        return logits
 
 """
-# x1 = torch.randn(1,40,64,64)
+x1 = torch.randn(1,40,64,64)
+x2 = torch.randn(1,80,32,32)
+x3 = torch.randn(1,160,16,16)
+unet_model = UNet3(n_channels=4, n_classes=4)
+input = torch.randn(1,4,64,64)
+output = unet_model(input)3_out
+x1_out, x2_out, x3_out, logits = output
+print(f'x1_out = {x1_out.shape}')
+print(f'x2_out = {x2_out.shape}')
+print(f'x3_out = {x3_out.shape}')
+print(f'logits = {logits.shape}')
+"""
+"""
+# 
 class UNet2(nn.Module):
     def __init__(self, n_classes, bilinear=False):
         super(UNet, self).__init__()

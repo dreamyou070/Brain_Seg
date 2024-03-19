@@ -105,21 +105,9 @@ def main(args):
 
     print(f'\n step 10. segmentation model')
     from model.segmentation_unet import UNet, UNet2, UNet3
-    segmentation_model = UNet(n_classes=4, bilinear=False)
-    if args.segment_use_raw_latent :
-        segmentation_model = UNet2(n_channels=4,
-                                   n_classes=args.n_classes,
-                                   bilinear=False)
-    if args.seg_based_lora :
-        segmentation_model = UNet3(n_channels=4,
-                                   n_classes=args.n_classes,
-                                   bilinear=False)
-    if args.pretrained_segmentation_model :
-        from safetensors.torch import load_file
-        segmentation_model.load_state_dict(load_file(args.pretrained_segmentation_model))
-        # segmentation_seg_based_lora
-
-
+    segmentation_model = UNet3(n_channels=4,
+                               n_classes=args.n_classes,
+                               bilinear=False)
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
     trainable_params = []
     trainable_params.append({"params": segmentation_model.parameters(), "lr": args.learning_rate})
@@ -143,68 +131,53 @@ def main(args):
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
             loss_dict = {}
-            image = batch['image'].to(dtype=weight_dtype)  # 1,3,512,512
+            image = batch['image'].to(dtype=weight_dtype)    # 1,3,512,512
+            gt = batch['gt'].to(dtype=weight_dtype)          # 1,4,128,128
+            gt_flat = batch['gt_fla'].to(dtype=weight_dtype) # 1,128*128
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
-            true_mask_one_hot_matrix = batch['gt'].to(dtype=weight_dtype)  # 1,4,64,64
-            true_mask_one_vector = batch['gt_vector'].to(dtype=weight_dtype)  # 4096
-
-            if args.lora_inference :
-                with torch.no_grad():
-                    encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
-                    if args.text_truncate :
-                        encoder_hidden_states = encoder_hidden_states[:,:2,:]
-                    with torch.set_grad_enabled(True):
-                        unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
-                    query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
-                    controller.reset()
-                    q_dict = {}
-                    for layer in args.trg_layer_list:
-                        query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                        head, pix_num, dim = query.shape
-                        res = int(pix_num ** 0.5)
-                        query = query.view(head, res, res, dim).permute(0,3,1,2).mean(dim=0)
-                        q_dict[res] = query.unsqueeze(0)
-            else :
+            # ----------------------------------------------------------------------------------------------------------
+            # [1] pretrained lora inference
+            with torch.no_grad():
+                encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
+                if args.text_truncate :
+                    encoder_hidden_states = encoder_hidden_states[:,:2,:]
+                with torch.set_grad_enabled(True):
+                    unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
+                query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
+                controller.reset()
                 q_dict = {}
-                q_dict[64] = batch['feature_64']
-                q_dict[32] = batch['feature_32']
-                q_dict[16] = batch['feature_16']
-            #######################################################################################################################
-            # segmentation model
-            if args.segment_use_raw_latent :
-                masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
-            elif args.seg_based_lora:
-                q_out_64, q_out_32, q_out_16, masks_pred= segmentation_model(latents)
-                #out_64 = torch.Size([1, 40, 64, 64])
-                #out_32 = torch.Size([1, 80, 32, 32])
-                #out_16 = torch.Size([1, 160, 16, 16])
-            else :
-                masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16]) # 1,4,64,64
+                for layer in args.trg_layer_list:
+                    query = query_dict[layer][0].squeeze()  # head, pix_num, dim
+                    head, pix_num, dim = query.shape
+                    res = int(pix_num ** 0.5)
+                    query = query.view(head, res, res, dim).permute(0,3,1,2).mean(dim=0)
+                    q_dict[res] = query.unsqueeze(0)
+            # [2] segmentation model
+            q_out_64, q_out_32, q_out_16, masks_pred = segmentation_model(latents)
 
-            # target = true mask
-            loss = criterion(masks_pred,
-                             true_mask_one_hot_matrix)
+            # ----------------------------------------------------------------------------------------------------------
+            # [1] loss 1 : CrossEntropyLoss
+            # input = N, C
+            # output = N
+            loss = criterion(masks_pred, gt)
 
-            """
-            if args.seg_based_lora :
-                q_out_64_target = q_dict[64]
-                q_out_32_target = q_dict[32]
-                q_out_16_target = q_dict[16]
-                query_loss  = loss_l2(q_out_64.float(), q_out_64_target.float()).mean()
-                query_loss += loss_l2(q_out_32.float(), q_out_32_target.float()).mean()
-                query_loss += loss_l2(q_out_16.float(), q_out_16_target.float()).mean()
-                loss += query_loss
-            """
-            # anomal pixel redistribute
+            # [2] loss 2
+            q_out_64_target = q_dict[64]
+            q_out_32_target = q_dict[32]
+            q_out_16_target = q_dict[16]
+            query_loss = loss_l2(q_out_64.float(), q_out_64_target.float()).mean()
+            query_loss += loss_l2(q_out_32.float(), q_out_32_target.float()).mean()
+            query_loss += loss_l2(q_out_16.float(), q_out_16_target.float()).mean()
+            loss += query_loss
+            # [3] loss 3
             if args.multiclassification_focal_loss :
                 masks_pred_ = masks_pred.permute(0,2,3,1)
                 masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
                 loss = loss_multi_focal(masks_pred_, # N,C
-                                        true_mask_one_vector.squeeze().to(masks_pred.device)) # N
+                                        gt.squeeze().to(masks_pred.device)) # N
             loss_dict['cross_entropy_loss'] = loss.item()
-
-            # [2] Dice Loss
+            # [4] loss 4
             y = true_mask_one_vector.view(64, 64).unsqueeze(dim=0)
             if args.use_dice_anomal_loss :
                 loss += dice_loss_anomal(y_pred = masks_pred,
@@ -212,9 +185,6 @@ def main(args):
             else :
                 loss += dice_loss_fn(y_pred = masks_pred,
                                      y_true = y.unsqueeze(0).to(torch.int64))
-            #loss += dice_loss(F.softmax(masks_pred, dim=1).float(), # class 0 ~ 4 check best
-            #                  true_mask_one_hot_matrix,             # true_masks = [1,4,64,64] (one-hot_
-            #                  multiclass=True)
 
 
             loss = loss.to(weight_dtype)

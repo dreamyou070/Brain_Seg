@@ -20,16 +20,12 @@ from torch import nn
 
 
 def resize_query_features(query):
-    # pix_num, dim = query.shape
     head_num, pix_num, dim = query.shape
     res = int(pix_num ** 0.5)  # 8
-    # query_map = query.view(res, res, dim).permute(2,0,1).contiguous().unsqueeze(0)           # 1, channel, res, res
     query_map = query.view(head_num, res, res, dim).permute(0, 3, 1, 2).contiguous()  # 1, channel, res, res
     resized_query_map = nn.functional.interpolate(query_map, size=(64, 64), mode='bilinear')  # 1, channel, 64,  64
     resized_query = resized_query_map.permute(0, 2, 3, 1).contiguous().squeeze()  # head, 64, 64, channel
-    resized_query = resized_query.view(head_num, 64 * 64,
-                                       dim)  # #view(head_num, -1, dim).squeeze()  # head, pix_num, dim
-    # resized_query = resized_query.view(64 * 64,dim)  # #view(head_num, -1, dim).squeeze()  # 1, pix_num, dim
+    resized_query = resized_query.view(head_num, 64 * 64, dim) # 8, 64*64, dim
     return resized_query
 
 def prev_step(model_output,

@@ -44,7 +44,7 @@ def evaluate(segmentation_model, dataloader, device, text_encoder, unet, vae, co
 
 
 @torch.inference_mode()
-def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet, vae, controller, weight_dtype,
+def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, vae, controller, weight_dtype,
                   position_embedder, args):
     segmentation_model.eval()
     num_val_batches = len(dataloader)
@@ -56,57 +56,42 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
 
         for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
             if global_num < 10:
-
+                encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
+                if args.text_truncate:
+                    encoder_hidden_states = encoder_hidden_states[:, :2, :]
                 image = batch['image'].to(dtype=weight_dtype)  # 1,3,512,512
-                true_mask_one_hot_matrix = batch['gt'].to(dtype=weight_dtype)  # 1,4,64,64
-                true_mask_one_vector = batch['gt_vector'].to(dtype=weight_dtype)  # 4096
+                gt = batch['gt'].to(dtype=weight_dtype)  # 1,4,128,128
+                gt_flat = batch['gt_flat'].to(dtype=weight_dtype)  # 1,128*128
                 with torch.no_grad():
                     latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
-                if args.lora_inference :
-                    encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
-                    if args.text_truncate:
-                        encoder_hidden_states = encoder_hidden_states[:, :2, :]
-                    with torch.set_grad_enabled(True):
-                        unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
-                             noise_type=position_embedder)
-                    query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
-                    controller.reset()
-                    q_dict = {}
-                    for layer in args.trg_layer_list:
-                        query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                        head, pix_num, dim = query.shape
-                        res = int(pix_num ** 0.5)
-                        query = query.view(head, res, res, dim).permute(0, 3, 1, 2).mean(dim=0)
-                        q_dict[res] = query.unsqueeze(0)
-                else :
-                    q_dict = {}
-                    q_dict[64] = batch['feature_64']
-                    q_dict[32] = batch['feature_32']
-                    q_dict[16] = batch['feature_16']
-
-                if args.segment_use_raw_latent:
-                    masks_pred = segmentation_model(latents, q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
-                elif args.seg_based_lora:
-                    q_out_64, q_out_32, q_out_16, masks_pred = segmentation_model(latents)
-                    # out_64 = torch.Size([1, 40, 64, 64])
-                    # out_32 = torch.Size([1, 80, 32, 32])
-                    # out_16 = torch.Size([1, 160, 16, 16])
-                else:
-                    masks_pred = segmentation_model(q_dict[64], q_dict[32], q_dict[16])  # 1,4,64,64
-
+                with torch.set_grad_enabled(True):
+                    unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list,
+                         noise_type=position_embedder)
+                query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
+                controller.reset()
+                q_dict = {}
+                for layer in args.trg_layer_list:
+                    query = query_dict[layer][0].squeeze()  # head, pix_num, dim
+                    query = query.mean(dim=0).squeeze()
+                    query = query.permute(1, 0)  # dim, pix_num
+                    res = int(query.shape[-1] ** 0.5)
+                    query = query.view(-1, res, res)
+                    q_dict[res] = query
+                x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
+                masks_pred = segmentation_head(x16_out, x32_out, x64_out)
                 #######################################################################################################################
                 # segmentation model
                 # [1] pred
                 mask_pred_ = masks_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,64,64,4
                 mask_pred_argmax = np.argmax(mask_pred_, axis=3).flatten()
                 y_pred_list.append(torch.Tensor(mask_pred_argmax))
-                mask_true = true_mask_one_vector.detach().cpu().numpy().flatten()
+                mask_true = gt_flat.detach().cpu().numpy().flatten()
                 y_true_list.append(torch.Tensor(mask_true))
 
                 # [2] dice coefficient
                 from utils.dice_score import dice_loss
                 dice_coeff = 1-dice_loss(F.softmax(masks_pred, dim=1).float(),  # class 0 ~ 4 check best
-                                          true_mask_one_hot_matrix,  # true_masks = [1,4,64,64] (one-hot_
+                                          gt,  # true_masks = [1,4,64,64] (one-hot_
                                           multiclass=True)
                 dice_coeff_list.append(dice_coeff.detach().cpu())
                 global_num += 1
@@ -122,7 +107,7 @@ def evaluation_check(segmentation_model, dataloader, device, text_encoder, unet,
             precision = score[actual_idx, actual_idx] / total_actual_num
             IOU_dict[actual_idx] = precision
         dice_coeff = np.mean(np.array(dice_coeff_list))
-    segmentation_model.train()
+    segmentation_head.train()
     return IOU_dict, mask_pred_argmax.squeeze(), dice_coeff
 
 
