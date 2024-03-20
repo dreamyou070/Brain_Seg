@@ -84,11 +84,11 @@ def main(args):
 
     print(f'\n step 8. model to device')
     if args.use_position_embedder :
-        segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, position_embedder = accelerator.prepare(
-            segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, position_embedder)
+        segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = accelerator.prepare(
+            segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder)
     else:
-        segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(segmentation_head,
-                                                unet, text_encoder, network, optimizer, train_dataloader,  lr_scheduler)
+        segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler = accelerator.prepare(segmentation_head,
+                                                unet, text_encoder, network, optimizer, test_dataloader, train_dataloader,  lr_scheduler)
     text_encoders = transform_models_if_DDP([text_encoder])
     unet, network = transform_models_if_DDP([unet, network])
     if args.use_position_embedder:
@@ -240,7 +240,7 @@ def main(args):
             pe_model_save(accelerator.unwrap_model(segmentation_head), save_dtype, p_save_dir)
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
-        IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, train_dataloader, accelerator.device,
+        IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
                                                       text_encoder, unet, vae, controller, weight_dtype,
                                                       position_embedder, args)
         print(f'IOU_keras = {IOU_dict}')

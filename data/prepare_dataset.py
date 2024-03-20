@@ -27,7 +27,12 @@ def call_dataset(args) :
                                          caption='brain',
                                          latent_res=args.latent_res,
                                          n_classes = args.n_classes)
-        test_dataset = train_dataset
+        test_dataset = TrainDataset_Seg(root_dir=os.path.join(args.data_path, f'test'),
+                                         resize_shape=[512, 512],
+                                         tokenizer=tokenizer,
+                                         caption='brain',
+                                         latent_res=args.latent_res,
+                                         n_classes=args.n_classes)
     train_dataloader = torch.utils.data.DataLoader(train_dataset,
                                              batch_size=args.batch_size,
                                              shuffle=True)
