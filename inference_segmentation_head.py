@@ -113,9 +113,9 @@ def main(args):
         register_attention_control(unet, controller)
 
         # [6] save directory
-        check_base_folder = os.path.join(recon_base_folder, f'my_check')
+        check_base_folder = os.path.join(lora_base_folder, f'my_check')
         os.makedirs(check_base_folder, exist_ok=True)
-        answer_base_folder = os.path.join(recon_base_folder, f'scoring/{args.obj_name}/test')
+        answer_base_folder = os.path.join(lora_base_folder, f'scoring/{args.obj_name}/test')
         os.makedirs(answer_base_folder, exist_ok=True)
 
         # [1] test path
