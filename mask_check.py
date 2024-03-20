@@ -1,6 +1,6 @@
 import os, shutil
 import numpy as np
-
+"""
 base_folder = r'/home/dreamyou070/MyData/anomaly_detection/medical/brain/BraTS2020_Segmentation_128/train/anomal/'
 test_folder = r'/home/dreamyou070/MyData/anomaly_detection/medical/brain/BraTS2020_Segmentation_128/test'
 os.makedirs(test_folder, exist_ok = True)
@@ -25,3 +25,10 @@ for i, file in enumerate(images) :
         new_npy_dir =os.path.join(test_mask_folder, f'{name}.npy')
         os.rename(org_img_dir, new_img_dir)
         os.rename(org_npy_dir, new_npy_dir)
+"""
+import torch
+from torch import nn
+x = torch.randn(1,4,64,64)
+b,d,r,p = x.shape
+layer_norm = nn.LayerNorm(d)
+x = layer_norm(x)
