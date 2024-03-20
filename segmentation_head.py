@@ -44,7 +44,8 @@ def main(args):
     print(f'\n step 4. model ')
     weight_dtype, save_dtype = prepare_dtype(args)
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
-    segmentation_head = Segmentation_Head(n_classes=args.n_classes)
+    segmentation_head = Segmentation_Head(n_classes=args.n_classes,
+                                          use_batchnorm=args.use_batchnorm)
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -359,6 +360,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_class12", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     parser.add_argument("--train_segmentation", action='store_true')
+    parser.add_argument("--use_batchnorm", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
