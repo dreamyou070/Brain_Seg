@@ -2,11 +2,11 @@
 #
 port_number=50645
 category="medical"
-obj_name="teeth"
-benchmark="teeth_main"
+obj_name="brain"
+benchmark="BraTS2020_Segmentation_128"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="1_segmentation_model"
+file_name="23_single_modality_test"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_config \
  --main_process_port $port_number ../segmentation_head.py --log_with wandb \
@@ -24,4 +24,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_config \
  --resize_shape 512 --latent_res 64 --multiclassification_focal_loss --multiclassification_focal_loss \
  --train_segmentation \
  --use_position_embedder \
- --n_classes 2
+ --n_classes 4 --single_modality

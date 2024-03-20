@@ -28,13 +28,15 @@ def call_dataset(args) :
                                              tokenizer=tokenizer,
                                              caption='brain',
                                              latent_res=args.latent_res,
-                                             n_classes = args.n_classes)
+                                             n_classes = args.n_classes,
+                                             single_modality = args.single_modality)
             test_dataset = TrainDataset_Seg(root_dir=os.path.join(args.data_path, f'test'),
                                              resize_shape=[512, 512],
                                              tokenizer=tokenizer,
                                              caption='brain',
                                              latent_res=args.latent_res,
-                                             n_classes=args.n_classes)
+                                             n_classes=args.n_classes,
+                                            single_modality = args.single_modality)
     else :
         from data.dataset_teeth import TrainDataset_Seg as teeth_dataset
         train_dataset = teeth_dataset(root_dir=root_dir,

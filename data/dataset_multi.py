@@ -78,7 +78,8 @@ class TrainDataset_Seg(Dataset):
                  tokenizer=None,
                  caption: str = "necrotic, edema, tumor",
                  latent_res: int = 64,
-                 n_classes: int = 4):
+                 n_classes: int = 4,
+                 single_modality = False):
 
         # [1] base image
         self.root_dir = root_dir
@@ -103,7 +104,7 @@ class TrainDataset_Seg(Dataset):
         self.gt_paths = gt_paths
         self.latent_res = latent_res
         self.n_classes = n_classes
-
+        self.single_modality = single_modality
     def __len__(self):
         return len(self.image_paths)
 
@@ -137,6 +138,12 @@ class TrainDataset_Seg(Dataset):
         # [1] base
         img_path = self.image_paths[idx]
         img = self.load_image(img_path, self.resize_shape[0], self.resize_shape[1], type='RGB')  # np.array,
+
+        if self.single_modality :
+            img_back = np.array(self.resize_shape[0], self.resize_shape[1],3)
+            for i in range(3) :
+                img_back[:,:,i] = img[:,:,0]
+            img = img_back
 
         # [2] gt dir
         gt_path = self.gt_paths[idx]  #

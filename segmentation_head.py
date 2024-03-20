@@ -364,6 +364,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_segmentation", action='store_true')
     parser.add_argument("--use_batchnorm", action='store_true')
     parser.add_argument("--use_channel_deconv", action='store_true')
+    parser.add_argument("--single_modality", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
