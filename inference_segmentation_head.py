@@ -19,6 +19,7 @@ from attention_store.normal_activator import passing_normalize_argument
 from torch import nn
 from torch.nn import functional as F
 from model.segmentation_unet import Segmentation_Head
+from sklearn.metrics import confusion_matrix
 
 
 def reshape_batch_dim_to_heads(tensor):
@@ -134,8 +135,8 @@ def main(args):
             gt_folder = os.path.join(anomal_folder_dir, 'mask_128')
             rgb_imgs = os.listdir(rgb_folder)
 
+            y_pred_list, y_true_list = [], []
             for rgb_img in rgb_imgs:
-
                 name, ext = os.path.splitext(rgb_img)
                 rgb_img_dir = os.path.join(rgb_folder, rgb_img)
                 pil_img = Image.open(rgb_img_dir).convert('RGB')
@@ -170,13 +171,14 @@ def main(args):
                         masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
                         masks_pred = F.softmax(masks_pred, dim=1).squeeze(0).detach().cpu().numpy()  # 4,128,128
                         masks_pred = np.argmax(masks_pred, axis=0) # [128,128], unique = 0,1,2,3
+                        y_pred_list.append(torch.Tensor(masks_pred))
 
                         gt_pil = np.zeros((128,128,3))
                         pred_pil = np.zeros((128,128,3))
                         n_classes = 4
                         colors = [[0,0,0], [255,0,0], [0,255,0], [0,0,255]]
                         gt_arr = np.load(os.path.join(gt_folder, f'{name}.npy'))  # [128,128]
-
+                        y_true_list.append(torch.Tensor(gt_arr.flatten()))
                         for c in range(n_classes):
                             position = np.where(masks_pred == c, 1, 0)
                             position = np.expand_dims(position, axis=2)  # 128,128,1
@@ -194,6 +196,17 @@ def main(args):
                         gt_map = Image.fromarray(gt_pil.astype(np.uint8))
                         gt_map.save(os.path.join(save_base_folder, f'{name}_gt.png'))
                 controller.reset()
+
+        # [4] saving confusino matrix
+        controller.reset()
+        y_hat = torch.cat(y_pred_list)
+        y = torch.cat(y_true_list)
+        confusion_score = confusion_matrix(y, y_hat)
+        confusion_score = confusion_score.tolist()
+        confusion_score_text = os.path.join( lora_base_folder,'confusion_score.txt')
+        with open(confusion_score_text, 'w') as f:
+            for s in confusion_score:
+                f.write(f'{s}\n')
         print(f'Model To Original')
         for k in raw_state_dict_orig.keys():
             raw_state_dict[k] = raw_state_dict_orig[k]
