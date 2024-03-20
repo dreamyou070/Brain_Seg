@@ -171,7 +171,7 @@ def main(args):
                         masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
                         masks_pred = F.softmax(masks_pred, dim=1).squeeze(0).detach().cpu().numpy()  # 4,128,128
                         masks_pred = np.argmax(masks_pred, axis=0) # [128,128], unique = 0,1,2,3
-                        y_pred_list.append(torch.Tensor(masks_pred))
+                        y_pred_list.append(torch.Tensor(masks_pred.flatten()))
 
                         gt_pil = np.zeros((128,128,3))
                         pred_pil = np.zeros((128,128,3))
@@ -199,8 +199,11 @@ def main(args):
 
         # [4] saving confusino matrix
         controller.reset()
+
         y_hat = torch.cat(y_pred_list)
         y = torch.cat(y_true_list)
+
+
         confusion_score = confusion_matrix(y, y_hat)
         confusion_score = confusion_score.tolist()
         confusion_score_text = os.path.join( lora_base_folder,'confusion_score.txt')
