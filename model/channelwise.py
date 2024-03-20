@@ -16,9 +16,27 @@ class Channel_DeConv(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
+            nn.ReLU(inplace=True))
 
     def forward(self, x):
         return self.double_conv(x)
 
+class Channel_DeConv_2(nn.Module):
+    """(convolution => [BN] => ReLU) * 2"""
+
+    def __init__(self, in_channels):
+        super().__init__()
+
+        self.importance_extractor = nn.BatchNorm2d(in_channels)
+
+        #self.double_conv = nn.Sequential(nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
+        #                                 nn.BatchNorm2d(mid_channels),
+        #                                 nn.ReLU(inplace=True),
+        #                                 nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
+        #                                 nn.BatchNorm2d(out_channels),
+        #                                 nn.ReLU(inplace=True))
+    def forward(self, x):
+        importance = self.importance_extractor(x)
+        x = x * importance
+        #x = self.double_conv(x)
+        return x

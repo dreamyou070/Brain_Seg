@@ -15,7 +15,7 @@ from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
 from data.prepare_dataset import call_dataset
 from model import call_model_package
 from model.segmentation_unet import Segmentation_Head
-from model.channelwise import Channel_DeConv
+from model.channelwise import Channel_DeConv, Channel_DeConv_2
 from attention_store.normal_activator import passing_normalize_argument
 from torch import nn
 from utils.diceloss import DiceLoss
@@ -49,6 +49,8 @@ def main(args):
                                           use_batchnorm=args.use_batchnorm)
     if args.use_channel_deconv :
         channel_deconv_model = Channel_DeConv(in_channels=4, out_channels=4)
+        if args.use_my_importance :
+            channel_deconv_model = Channel_DeConv_2(in_channels=4)
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
