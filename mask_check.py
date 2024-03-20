@@ -29,6 +29,6 @@ for i, file in enumerate(images) :
 import torch
 from torch import nn
 x = torch.randn(1,4,64,64)
-b,d,r,p = x.shape
-layer_norm = nn.LayerNorm(d)
-x = layer_norm(x)
+act1 = nn.ReLU(inplace=True)
+x = act1(x)
+print(type(x))

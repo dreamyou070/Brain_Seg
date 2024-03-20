@@ -73,7 +73,7 @@ class DoubleConv(nn.Module):
             #                                 nn.ReLU(inplace=True))
             self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False)
             self.act1 = nn.ReLU(inplace=True)
-            self.conv2 = nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1,bias=False),
+            self.conv2 = nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1,bias=False)
             self.act2 = nn.ReLU(inplace=True)
 
         self.use_batchnorm = use_batchnorm
@@ -87,7 +87,6 @@ class DoubleConv(nn.Module):
             layer_norm = nn.LayerNorm([d, r, p]).to(x.device)
             x = layer_norm(x)
             x = self.act1(x)
-
             x = self.conv2(x)
             b, d, r, p = x.shape
             layer_norm = nn.LayerNorm([d, r, p]).to(x.device)
