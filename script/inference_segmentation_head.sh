@@ -6,7 +6,7 @@ obj_name="brain"
 benchmark="BraTS2020_Segmentation_128"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="21_segmentation_model_128_gpu5"
+file_name="22_segmentation_model_128_layer_norm"
 
 accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --main_process_port $port_number ../inference_segmentation_head.py \
@@ -20,4 +20,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --trg_layer_list "['up_blocks_1_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
- --threds [0.5] --use_position_embedder
+ --threds [0.5] --use_position_embedder --

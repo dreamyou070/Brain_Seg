@@ -50,7 +50,8 @@ def main(args):
     position_embedder = None
     if args.use_position_embedder: position_embedder = AllPositionalEmbedding()
     print(f' (2.3) segmentation head')
-    segmentation_head = Segmentation_Head(n_classes=args.n_classes)
+    segmentation_head = Segmentation_Head(n_classes=args.n_classes,
+                                          use_batchnorm=args.use_batchnorm)
 
     print(f'\n step 2. accelerator and device')
     vae.requires_grad_(False)
@@ -270,6 +271,7 @@ if __name__ == '__main__':
     parser.add_argument("--text_truncate", action='store_true')
     parser.add_argument("--test_with_xray", action='store_true')
     parser.add_argument("--n_classes", type=int, default=4)
+    parser.add_argument("--use_batchnorm", action='store_true')
     args = parser.parse_args()
     passing_argument(args)
     unet_passing_argument(args)
