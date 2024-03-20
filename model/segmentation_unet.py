@@ -84,13 +84,13 @@ class DoubleConv(nn.Module):
         else :
             x = self.conv1(x)
             b, d, r, p = x.shape
-            layer_norm = nn.LayerNorm([d, r, p])
+            layer_norm = nn.LayerNorm([d, r, p]).to(x.device)
             x = layer_norm(x)
             x = self.act1(x)
 
             x = self.conv2(x)
             b, d, r, p = x.shape
-            layer_norm = nn.LayerNorm([d, r, p])
+            layer_norm = nn.LayerNorm([d, r, p]).to(x.device)
             x = layer_norm(x)
             x = self.act2(x)
             return x
