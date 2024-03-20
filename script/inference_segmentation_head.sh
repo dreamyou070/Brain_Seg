@@ -12,7 +12,7 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --main_process_port $port_number ../inference_segmentation_head.py \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
  --network_dim 64 --network_alpha 4 \
- --data_path "/home/dreamyou070/MyData/anomaly_detection/${category}/${obj_name}/${benchmark}/val" \
+ --data_path "/home/dreamyou070/MyData/anomaly_detection/${category}/${obj_name}/${benchmark}/test" \
  --network_folder "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}/models" \
  --obj_name "${obj_name}" \
  --prompt "${trigger_word}" \
