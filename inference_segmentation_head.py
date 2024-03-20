@@ -178,8 +178,8 @@ def main(args):
                         n_classes = 4
                         colors = [[0,0,0], [255,0,0], [0,255,0], [0,0,255]]
                         gt_arr = np.load(os.path.join(gt_folder, f'{name}.npy'))  # [128,128]
-                        gt_arr = np.unique(gt_arr)
-                        print(f'unique value of gt = {gt_arr}')
+                        print(f'unique value of gt_arr (origin) = {np.unique(gt_arr)}')
+                        gt_arr = np.where(gt_arr==4,3,gt_arr)
                         y_true_list.append(torch.Tensor(gt_arr.flatten()))
                         for c in range(n_classes):
                             position = np.where(masks_pred == c, 1, 0)
@@ -189,6 +189,7 @@ def main(args):
                             pred_pil += position_color
 
                             gt_position = np.where(gt_arr == c, 1, 0)
+                            print(f'gt_position shape = {gt_position.shape}')
                             gt_position = np.expand_dims(gt_position, axis=2) # [128,128,1]
                             gt_position = np.repeat(gt_position, 3, axis=2)
                             gt_pil += gt_position * colors[c]
