@@ -36,7 +36,19 @@ def call_dataset(args) :
                                              latent_res=args.latent_res,
                                              n_classes=args.n_classes)
     else :
-        from data.dataset_teeth import TrainDataset
+        from data.dataset_teeth import TrainDataset_Seg as teeth_dataset
+        train_dataset = teeth_dataset(root_dir=root_dir,
+                                         resize_shape=[512, 512],
+                                         tokenizer=tokenizer,
+                                         caption=args.trigger_word,
+                                         latent_res=args.latent_res,
+                                         n_classes=args.n_classes)
+        test_dataset = teeth_dataset(root_dir=os.path.join(args.data_path, f'test'),
+                                        resize_shape=[512, 512],
+                                        tokenizer=tokenizer,
+                                        caption=args.trigger_word,
+                                        latent_res=args.latent_res,
+                                        n_classes=args.n_classes)
 
 
     train_dataloader = torch.utils.data.DataLoader(train_dataset,
