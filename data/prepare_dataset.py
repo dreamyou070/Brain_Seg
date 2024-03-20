@@ -12,27 +12,33 @@ def call_dataset(args) :
         from model.tokenizer import load_tokenizer
         tokenizer = load_tokenizer(args)
 
-    if not args.train_segmentation :
-        dataset_class = TrainDataset_Single
-        train_dataset = dataset_class(root_dir=root_dir,
-                                    resize_shape=[512, 512],
-                                    tokenizer=tokenizer,
-                                    caption='brain',
-                                    latent_res=args.latent_res, )
-        test_dataset = train_dataset
+    if args.trigger_word == 'brain' :
+
+        if not args.train_segmentation :
+            dataset_class = TrainDataset_Single
+            train_dataset = dataset_class(root_dir=root_dir,
+                                        resize_shape=[512, 512],
+                                        tokenizer=tokenizer,
+                                        caption='brain',
+                                        latent_res=args.latent_res, )
+            test_dataset = train_dataset
+        else :
+            train_dataset = TrainDataset_Seg(root_dir=root_dir,
+                                             resize_shape=[512, 512],
+                                             tokenizer=tokenizer,
+                                             caption='brain',
+                                             latent_res=args.latent_res,
+                                             n_classes = args.n_classes)
+            test_dataset = TrainDataset_Seg(root_dir=os.path.join(args.data_path, f'test'),
+                                             resize_shape=[512, 512],
+                                             tokenizer=tokenizer,
+                                             caption='brain',
+                                             latent_res=args.latent_res,
+                                             n_classes=args.n_classes)
     else :
-        train_dataset = TrainDataset_Seg(root_dir=root_dir,
-                                         resize_shape=[512, 512],
-                                         tokenizer=tokenizer,
-                                         caption='brain',
-                                         latent_res=args.latent_res,
-                                         n_classes = args.n_classes)
-        test_dataset = TrainDataset_Seg(root_dir=os.path.join(args.data_path, f'test'),
-                                         resize_shape=[512, 512],
-                                         tokenizer=tokenizer,
-                                         caption='brain',
-                                         latent_res=args.latent_res,
-                                         n_classes=args.n_classes)
+        from data.dataset_teeth import TrainDataset
+
+
     train_dataloader = torch.utils.data.DataLoader(train_dataset,
                                              batch_size=args.batch_size,
                                              shuffle=True)

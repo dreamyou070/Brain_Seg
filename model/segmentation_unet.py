@@ -1,8 +1,29 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 # https://github.com/milesial/Pytorch-UNet
 
+class SingleConv(nn.Module):
+    """(convolution => [BN] => ReLU) * 2"""
+    def __init__(self, in_channels, out_channels, use_batchnorm = True):
+        super().__init__()
+
+        if use_batchnorm :
+            self.double_conv = nn.Sequential(nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
+                                             #nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+                                             nn.BatchNorm2d(out_channels),
+                                             nn.ReLU(inplace=True),)
+        else :
+            self.double_conv = nn.Sequential(nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
+                                             #nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+                                             nn.LayerNorm([out_channels, int(20480/out_channels),int(20480/out_channels)]),
+                                             nn.ReLU(inplace=True),)
+
+
+    def forward(self, x):
+
+        return self.double_conv(x)
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -55,6 +76,7 @@ class Up(nn.Module):
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2])
+        print(f'x1.shape = {x1.shape}')
         # [2] concat
         x = torch.cat([x2, x1], dim=1) # concatenation
         # [3] out conv
@@ -105,4 +127,3 @@ class Segmentation_Head(nn.Module):
         x3_out = self.up3(x)        # 1,160,128,128
         logits = self.outc(x3_out)  # 1,4, 128,128
         return logits
-
