@@ -2,52 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 # https://github.com/milesial/Pytorch-UNet
-class Org_UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=False):
-        super(UNet, self).__init__()
-        self.n_channels = n_channels
-        self.n_classes = n_classes
-        self.bilinear = bilinear
-
-        self.inc = (DoubleConv(n_channels, 64))
-        self.down1 = (Down(64, 128))
-        self.down2 = (Down(128, 256))
-        self.down3 = (Down(256, 512))
-        factor = 2 if bilinear else 1
-        self.down4 = (Down(512, 1024 // factor))
-
-
-
-        self.up1 = (Up(1024, 512 // factor, bilinear))
-        self.up2 = (Up(512, 256 // factor, bilinear))
-        self.up3 = (Up(256, 128 // factor, bilinear))
-        self.up4 = (Up(128, 64, bilinear))
-        self.outc = (OutConv(64, n_classes))
-
-    def forward(self, x):
-        x1 = self.inc(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
-        x = self.up1(x5, x4)
-        x = self.up2(x, x3)
-        x = self.up3(x, x2)
-        x = self.up4(x, x1)
-        logits = self.outc(x)
-        return logits
-
-    def use_checkpointing(self):
-        self.inc = torch.utils.checkpoint(self.inc)
-        self.down1 = torch.utils.checkpoint(self.down1)
-        self.down2 = torch.utils.checkpoint(self.down2)
-        self.down3 = torch.utils.checkpoint(self.down3)
-        self.down4 = torch.utils.checkpoint(self.down4)
-        self.up1 = torch.utils.checkpoint(self.up1)
-        self.up2 = torch.utils.checkpoint(self.up2)
-        self.up3 = torch.utils.checkpoint(self.up3)
-        self.up4 = torch.utils.checkpoint(self.up4)
-        self.outc = torch.utils.checkpoint(self.outc)
 
 
 class DoubleConv(nn.Module):
@@ -65,57 +19,20 @@ class DoubleConv(nn.Module):
                                              nn.BatchNorm2d(out_channels),
                                              nn.ReLU(inplace=True))
         else :
-            #self.double_conv = nn.Sequential(nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
-            #                                 nn.LayerNorm(mid_channels),
-            #                                 nn.ReLU(inplace=True),
-            #                                 nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1,bias=False),
-            #                                 nn.LayerNorm(out_channels),
-            #                                 nn.ReLU(inplace=True))
-            self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False)
-            self.act1 = nn.ReLU(inplace=True)
-            self.conv2 = nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1,bias=False)
-            self.act2 = nn.ReLU(inplace=True)
+            self.double_conv = nn.Sequential(nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
+                                             nn.LayerNorm([mid_channels, int(20480/mid_channels),int(20480/mid_channels)]),
+                                             nn.ReLU(inplace=True),
+                                             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1,bias=False),
+                                             nn.LayerNorm([mid_channels, int(20480 / mid_channels), int(20480 / mid_channels)]),
+                                             nn.ReLU(inplace=True))
 
-        self.use_batchnorm = use_batchnorm
 
     def forward(self, x):
-        if self.use_batchnorm :
-            return self.double_conv(x)
-        else :
-            x = self.conv1(x)
-            b, d, r, p = x.shape
-            layer_norm = nn.LayerNorm([d, r, p]).to(x.device)
-            x = layer_norm(x)
-            x = self.act1(x)
-            x = self.conv2(x)
-            b, d, r, p = x.shape
-            layer_norm = nn.LayerNorm([d, r, p]).to(x.device)
-            x = layer_norm(x)
-            x = self.act2(x)
-            return x
+
+        return self.double_conv(x)
 
 
 
-
-class Down(nn.Module):
-    """ (1) resolution down by maxpool
-        (2) channel down by convolution """
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-        self.maxpool_conv = nn.Sequential(nn.MaxPool2d(2),
-                                          DoubleConv(in_channels, out_channels))
-    def forward(self, x):
-        return self.maxpool_conv(x)
-
-class Mid(nn.Module):
-
-    """ (1) just double convoblution """
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-        self.conv = DoubleConv(in_channels,out_channels)
-
-    def forward(self, x):
-        return self.conv(x)
 
 class Up(nn.Module):
     """Upscaling then double conv"""
@@ -183,8 +100,9 @@ class Segmentation_Head(nn.Module):
 
     def forward(self, x16_out, x32_out, x64_out):
 
-        x = self.up1(x16_out,x32_out)  # 1,640,32,32
+        x = self.up1(x16_out,x32_out)  # 1,640,32,32 -> 640*32
         x = self.up2(x, x64_out)    # 1,320,64,64
         x3_out = self.up3(x)        # 1,160,128,128
         logits = self.outc(x3_out)  # 1,4, 128,128
         return logits
+
