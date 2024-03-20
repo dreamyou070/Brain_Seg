@@ -76,7 +76,6 @@ class Up(nn.Module):
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2])
-        print(f'x1.shape = {x1.shape}')
         # [2] concat
         x = torch.cat([x2, x1], dim=1) # concatenation
         # [3] out conv
