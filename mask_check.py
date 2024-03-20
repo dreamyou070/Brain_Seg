@@ -1,7 +1,7 @@
 import os, shutil
 import numpy as np
 
-base_folder = r'home/dreamyou070/MyData/anomaly_detection/medical\brain\BraTS2020_Segmentation_128\train'
+base_folder = r'/home/dreamyou070/MyData/anomaly_detection/medical/brain/BraTS2020_Segmentation_128/train/anomal/'
 image_folder = os.path.join(base_folder, 'image_128')
 mask_folder = os.path.join(base_folder, 'mask_128')
 masks = os.listdir(mask_folder)
