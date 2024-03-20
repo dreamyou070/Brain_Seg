@@ -22,8 +22,3 @@ class Channel_DeConv(nn.Module):
     def forward(self, x):
         return self.double_conv(x)
 
-
-decorrelate_model = DoubleConv(in_channels = 4,
-                                         out_channels = 4)
-output = decorrelate_model(latent)
-print(output.shape)
