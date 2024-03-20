@@ -11,5 +11,4 @@ for file in images :
     name, ext = os.path.splitext(file)
     if ext == '.npy' :
         org_img_dir = os.path.join(image_folder, file)
-        #new_dr = os.path.join()
-        #os.remove(org_img_dir)
+        os.remove(org_img_dir)
