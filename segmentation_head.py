@@ -15,6 +15,7 @@ from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
 from data.prepare_dataset import call_dataset
 from model import call_model_package
 from model.segmentation_unet import Segmentation_Head
+from model.channelwise import Channel_DeConv
 from attention_store.normal_activator import passing_normalize_argument
 from torch import nn
 from utils.diceloss import DiceLoss
@@ -46,6 +47,8 @@ def main(args):
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
     segmentation_head = Segmentation_Head(n_classes=args.n_classes,
                                           use_batchnorm=args.use_batchnorm)
+    if args.use_channel_deconv :
+        channel_deconv_model = Channel_DeConv()
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -55,6 +58,10 @@ def main(args):
                                  "lr": args.learning_rate})
     trainable_params.append({"params": segmentation_head.parameters(),
                              "lr": args.learning_rate})
+    if args.use_channel_deconv :
+        trainable_params.append({"params": channel_deconv_model.parameters(),
+                                 "lr": args.learning_rate})
+
     optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params)
 
     print(f'\n step 6. lr')
@@ -84,12 +91,13 @@ def main(args):
                                 class_weight=class_weight)
 
     print(f'\n step 8. model to device')
-    if args.use_position_embedder :
+    if not args.use_channel_deconv :
         segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = accelerator.prepare(
             segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder)
-    else:
-        segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler = accelerator.prepare(segmentation_head,
-                                                unet, text_encoder, network, optimizer, test_dataloader, train_dataloader,  lr_scheduler)
+    else :
+        channel_deconv_model, segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = accelerator.prepare(
+            channel_deconv_model, segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder)
+
     text_encoders = transform_models_if_DDP([text_encoder])
     unet, network = transform_models_if_DDP([unet, network])
     if args.use_position_embedder:
@@ -150,6 +158,8 @@ def main(args):
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
+            if args.use_channel_deconv:
+                latents = channel_deconv_model(latents)
             with torch.set_grad_enabled(True):
                 unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
             query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
@@ -239,6 +249,14 @@ def main(args):
             p_save_dir = os.path.join(segmentation_base_save_dir,
                                       f'segmentation_{epoch + 1}.safetensors')
             pe_model_save(accelerator.unwrap_model(segmentation_head), save_dtype, p_save_dir)
+            if args.use_channel_deconv :
+                channel_deconv_model_base_save_dir = os.path.join(args.output_dir, 'channel_deconv_model')
+                os.makedirs(channel_deconv_model_base_save_dir, exist_ok=True)
+                pe_model_save(accelerator.unwrap_model(channel_deconv_model), save_dtype,
+                              os.path.join(channel_deconv_model_base_save_dir,
+                                           f'channel_deconv_model_{epoch + 1}.safetensors'))
+
+
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
         IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
@@ -361,6 +379,7 @@ if __name__ == "__main__":
     parser.add_argument("--pretrained_segmentation_model", type=str)
     parser.add_argument("--train_segmentation", action='store_true')
     parser.add_argument("--use_batchnorm", action='store_true')
+    parser.add_argument("--use_channel_deconv", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)

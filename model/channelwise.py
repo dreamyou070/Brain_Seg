@@ -3,11 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-latent = torch.randn(1,4,64,64)
-# [1] init conv
-
-class DoubleConv(nn.Module):
+class Channel_DeConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
     def __init__(self, in_channels, out_channels, mid_channels=None):
@@ -26,11 +22,8 @@ class DoubleConv(nn.Module):
     def forward(self, x):
         return self.double_conv(x)
 
-"""
+
 decorrelate_model = DoubleConv(in_channels = 4,
                                          out_channels = 4)
 output = decorrelate_model(latent)
 print(output.shape)
-"""
-layer_norm = nn.LayerNorm(32)
-print(layer_norm.__dict__)
