@@ -23,3 +23,5 @@ for i, file in enumerate(images) :
     if i < test_num :
         new_img_dir = os.path.join(test_img_folder, file)
         new_npy_dir =os.path.join(test_mask_folder, f'{name}.npy')
+        os.rename(org_img_dir, new_img_dir)
+        os.rename(org_npy_dir, new_npy_dir)
