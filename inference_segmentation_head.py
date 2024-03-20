@@ -175,8 +175,7 @@ def main(args):
                         pred_pil = np.zeros((128,128,3))
                         n_classes = 4
                         colors = [[0,0,0], [255,0,0], [0,255,0], [0,0,255]]
-                        gt_arr = os.path.join(gt_folder, f'{name}.npy')  # [128,128]
-                        print(f'gt_arr = {gt_arr.shape}')
+                        gt_arr = np.load(os.path.join(gt_folder, f'{name}.npy'))  # [128,128]
 
                         for c in range(n_classes):
                             position = np.where(masks_pred == c, 1, 0)
