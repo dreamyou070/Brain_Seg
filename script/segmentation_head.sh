@@ -13,7 +13,7 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --train_unet --train_text_encoder --start_epoch 0 --max_train_epochs 100 \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
- --data_path "/home/dreamyou070/MyData/anomaly_detection/medical/brain/${benchmark}" \
+ --data_path "/home/dreamyou070/MyData/anomaly_detection/medical/${obj_name}/${benchmark}" \
  --trigger_word "teeth" \
  --obj_name "${obj_name}" \
  --do_map_loss \
