@@ -48,7 +48,7 @@ def main(args):
     segmentation_head = Segmentation_Head(n_classes=args.n_classes,
                                           use_batchnorm=args.use_batchnorm)
     if args.use_channel_deconv :
-        channel_deconv_model = Channel_DeConv()
+        channel_deconv_model = Channel_DeConv(in_channels=4, out_channels=4)
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
