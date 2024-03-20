@@ -15,7 +15,7 @@ image_folder = os.path.join(base_folder, 'image_128')
 mask_folder = os.path.join(base_folder, 'mask_128')
 masks = os.listdir(mask_folder)
 images = os.listdir(image_folder)
-test_num = int(images*0.2)
+test_num = int(len(images)*0.2)
 for i, file in enumerate(images) :
     name, ext = os.path.splitext(file)
     org_img_dir = os.path.join(image_folder, file)
