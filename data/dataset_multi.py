@@ -140,7 +140,7 @@ class TrainDataset_Seg(Dataset):
         img = self.load_image(img_path, self.resize_shape[0], self.resize_shape[1], type='RGB')  # np.array,
 
         if self.single_modality :
-            img_back = np.array(self.resize_shape[0], self.resize_shape[1],3)
+            img_back = np.zeros((self.resize_shape[0], self.resize_shape[1],3))
             for i in range(3) :
                 img_back[:,:,i] = img[:,:,0]
             img = img_back
