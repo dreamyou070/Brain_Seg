@@ -14,7 +14,7 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_config \
  --train_unet --train_text_encoder --start_epoch 0 --max_train_epochs 100 \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
  --data_path "/home/dreamyou070/MyData/anomaly_detection/medical/${obj_name}/${benchmark}" \
- --trigger_word "teeth" \
+ --trigger_word "${obj_name}" \
  --obj_name "${obj_name}" \
  --do_map_loss \
  --trg_layer_list "['up_blocks_1_attentions_2_transformer_blocks_0_attn2',
