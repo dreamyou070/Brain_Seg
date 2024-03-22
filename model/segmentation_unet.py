@@ -84,13 +84,10 @@ class Up(nn.Module):
 class Up_conv(nn.Module):
     """Upscaling then double conv"""
 
-    def __init__(self, in_channels, bilinear=True, use_batchnorm=True):
+    def __init__(self, in_channels, kernel_size=2, use_batchnorm=True):
         super().__init__()
         # if bilinear, use the normal convolutions to reduce the number of channels
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        else:
-            self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
+        self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=kernel_size, stride=kernel_size)
 
     def forward(self, x1):
 
@@ -120,7 +117,8 @@ class OutConv(nn.Module):
 
 class Segmentation_Head(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True):
+    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True,
+                 kernel_size = 2):
         super(Segmentation_Head, self).__init__()
 
         self.n_classes = n_classes
@@ -128,7 +126,7 @@ class Segmentation_Head(nn.Module):
         factor = 2 if bilinear else 1
         self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
         self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up3 = (Up_conv(320, bilinear))
+        self.up3 = (Up_conv(320, kernel_size = kernel_size)) # 64 -> 154
         self.outc = (OutConv(160, n_classes))
 
     def forward(self, x16_out, x32_out, x64_out):
@@ -138,7 +136,7 @@ class Segmentation_Head(nn.Module):
         x3_out = self.up3(x)        # 1,160,128,128
         logits = self.outc(x3_out)  # 1,4, 128,128
         return logits
-
+"""
 class Segmentation_Head_with_key(nn.Module):
 
     def __init__(self,  n_classes, bilinear=False, use_batchnorm=True):
@@ -153,7 +151,7 @@ class Segmentation_Head_with_key(nn.Module):
         #self.outc = (OutConv(160, n_classes))
 
     def forward(self, x16_out, x32_out, x64_out, key64):
-        """ cls token to high ? """
+        # cls token to high ? 
         x = self.up1(x16_out,x32_out)  # 1,640,32,32 -> 640*32
         x = self.up2(x, x64_out)    # 1,320,64,64
         x3_out = self.up3(x)        # 1,320,128,128
@@ -167,15 +165,12 @@ class Segmentation_Head_with_key(nn.Module):
         p = int(attention_probs.shape[-1] ** 0.5)
         logits = rearrange(attention_probs, "b d (p q) -> b d p q", p=p)
         return logits
-"""    
+
+
 x16_out = torch.randn(1,1280,16,16)
 x32_out = torch.randn(1,640,32,32)
 x64_out = torch.randn(1,320,64,64,)
-key64 = torch.randn(1,77,320)
-seg1 = Segmentation_Head(4)
+seg1 = Segmentation_Head(4, kernel_size=4)
 out = seg1(x16_out,x32_out,x64_out)
-print(f'first model out = {out.shape}')
-seg2 = Segmentation_Head_with_key(4)
-out = seg2(x16_out,x32_out,x64_out, key64)
-print(out.shape)
+print(out.shape) # [1,4,128,128]
 """

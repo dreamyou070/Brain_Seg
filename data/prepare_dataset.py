@@ -2,6 +2,7 @@ import os
 import torch
 from data.dataset_single import TrainDataset_Single
 from data.dataset_multi import TrainDataset_Seg
+
 def call_dataset(args) :
 
     # [1] set root data
@@ -20,12 +21,14 @@ def call_dataset(args) :
                                         resize_shape=[512, 512],
                                         tokenizer=tokenizer,
                                         caption=args.trigger_word,
-                                        latent_res=args.latent_res, )
+                                        latent_res=args.latent_res,
+                                        mask_res = args.mask_res,)
             test_dataset = dataset_class(root_dir=os.path.join(args.data_path, f'test'),
                                         resize_shape=[512, 512],
                                         tokenizer=tokenizer,
                                         caption=args.trigger_word,
-                                        latent_res=args.latent_res, )
+                                        latent_res=args.latent_res,
+                                        mask_res = args.mask_res,)
         else :
             train_dataset = TrainDataset_Seg(root_dir=root_dir,
                                              resize_shape=[512, 512],

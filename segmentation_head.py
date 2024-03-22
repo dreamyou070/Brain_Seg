@@ -46,10 +46,8 @@ def main(args):
     weight_dtype, save_dtype = prepare_dtype(args)
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
     segmentation_head = Segmentation_Head(n_classes=args.n_classes,
+                                          kernel_size = args.kernel_size,
                                           use_batchnorm=args.use_batchnorm)
-    if args.cross_attn_base :
-        segmentation_head = Segmentation_Head_with_key(n_classes=args.n_classes,
-                                              use_batchnorm=args.use_batchnorm)
 
 
     print(f'\n step 5. optimizer')
@@ -200,10 +198,10 @@ def main(args):
             loss += focal_loss
             loss_dict['focal_loss'] = focal_loss.item()
             # [5.3] Dice Loss
-            
+
             #y = gt_flat.view(128,128) # [128,128]
             #if args.use_dice_anomal_loss:
-            #    dice_loss = dice_loss_anomal(y_pred=masks_pred, # 
+            #    dice_loss = dice_loss_anomal(y_pred=masks_pred, #
             #                                  y_true=y.unsqueeze(0).to(torch.int64) #
             #                                  )
             #    loss += dice_loss
@@ -375,6 +373,8 @@ if __name__ == "__main__":
     parser.add_argument("--use_batchnorm", action='store_true')
     parser.add_argument("--use_channel_deconv", action='store_true')
     parser.add_argument("--single_modality", action='store_true')
+    parser.add_argument("--kernel_size", type=int, default=2)
+    parser.add_argument("--mask_res", type=int, default=128)
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)

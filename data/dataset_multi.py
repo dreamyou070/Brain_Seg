@@ -79,7 +79,8 @@ class TrainDataset_Seg(Dataset):
                  caption: str = "necrotic, edema, tumor",
                  latent_res: int = 64,
                  n_classes: int = 4,
-                 single_modality = False):
+                 single_modality = False,
+                 mask_res = 128):
 
         # [1] base image
         self.root_dir = root_dir
@@ -87,8 +88,8 @@ class TrainDataset_Seg(Dataset):
         folders = os.listdir(self.root_dir)
         for folder in folders :
             folder_dir = os.path.join(self.root_dir, folder)
-            rgb_folder = os.path.join(folder_dir, 'image_128')
-            gt_folder = os.path.join(folder_dir, 'mask_128') # [128,128]
+            rgb_folder = os.path.join(folder_dir, f'image_{mask_res}')
+            gt_folder = os.path.join(folder_dir, f'mask_{mask_res}') # [128,128]
             files = os.listdir(gt_folder)
             for file in files:
                 name, ext = os.path.splitext(file)
@@ -105,6 +106,8 @@ class TrainDataset_Seg(Dataset):
         self.latent_res = latent_res
         self.n_classes = n_classes
         self.single_modality = single_modality
+        self.mask_res = mask_res
+
     def __len__(self):
         return len(self.image_paths)
 
@@ -151,7 +154,7 @@ class TrainDataset_Seg(Dataset):
         gt_arr = np.where(gt_arr==4, 3, gt_arr)
         gt_arr_ = to_categorical(gt_arr)
         class_num = gt_arr_.shape[-1]
-        gt = np.zeros((128,128,4))
+        gt = np.zeros((self.mask_res,self.mask_res,4))
         gt[:,:,:class_num] = gt_arr_
         gt = torch.tensor(gt).permute(2,0,1)        # 4,128,128
 
