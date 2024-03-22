@@ -35,6 +35,7 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
             masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
+            print(f'masks_pred (1,3,256,256) = {masks_pred.shape}')
             #######################################################################################################################
             # [1] pred
             mask_pred_ = masks_pred.permute(0, 2, 3, 1).detach().cpu().numpy()  # 1,128,128,4
@@ -60,5 +61,4 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
             IOU_dict[actual_idx] = precision
         dice_coeff = np.mean(np.array(dice_coeff_list))
     segmentation_head.train()
-
     return IOU_dict, mask_pred_argmax.squeeze(), dice_coeff
