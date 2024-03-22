@@ -15,11 +15,10 @@ from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
 from data.prepare_dataset import call_dataset
 from model import call_model_package
 from model.segmentation_unet import Segmentation_Head
-from model.channelwise import Channel_DeConv, Channel_DeConv_2
-from attention_store.normal_activator import passing_normalize_argument
 from torch import nn
 from utils.diceloss import DiceLoss
 from utils.evaluate import evaluation_check
+
 def main(args):
 
     print(f'\n step 1. setting')
@@ -378,7 +377,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
-    passing_normalize_argument(args)
     from data.dataset_multi import passing_mvtec_argument
     passing_mvtec_argument(args)
     main(args)
