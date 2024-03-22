@@ -139,8 +139,8 @@ def main(args):
 
             # [5.0] my liss
             # masks_pred = [1,4,128,128]
-            print(f'batch sample_idx = {batch["sample_idx"]} ')
             if batch['sample_idx'] == 1 :
+                print(f'class 2 sample')
 
 
                 if args.do_attn_loss :

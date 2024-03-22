@@ -1,2 +1,3 @@
 import torch
-attn_loss = torch.Tensor(0)
+attn_loss = torch.tensor([0])
+print(attn_loss==0)
