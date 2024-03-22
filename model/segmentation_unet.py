@@ -153,7 +153,7 @@ class Segmentation_Head_with_key(nn.Module):
         #self.outc = (OutConv(160, n_classes))
 
     def forward(self, x16_out, x32_out, x64_out, key64):
-
+        """ cls token to high ? """
         x = self.up1(x16_out,x32_out)  # 1,640,32,32 -> 640*32
         x = self.up2(x, x64_out)    # 1,320,64,64
         x3_out = self.up3(x)        # 1,320,128,128
@@ -161,7 +161,7 @@ class Segmentation_Head_with_key(nn.Module):
         batch, dim = x3_out.shape[0]  ,x3_out.shape[-1]
         x3_out = x3_out.view(batch, -1, dim) # 1, 128*128, 320
         attention_scores = torch.baddbmm( torch.empty(x3_out.shape[0], x3_out.shape[1], key64.shape[1], dtype=x3_out.dtype, device=x3_out.device),
-            x3_out, key64.transpose(-1, -2), beta=0)[:,:,:self.n_classes] # 1,128*128,4
+            x3_out, key64.transpose(-1, -2), beta=0)[:,:,1:1+self.n_classes] # 1,128*128,4 (without cls token)
         attention_probs = attention_scores.softmax(dim=-1) # 1,128*128, 4
         attention_probs = attention_probs.permute(0,2,1).contiguous()   # 1, 4, 128*128
         p = int(attention_probs.shape[-1] ** 0.5)
