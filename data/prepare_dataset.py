@@ -33,17 +33,19 @@ def call_dataset(args) :
             train_dataset = TrainDataset_Seg(root_dir=root_dir,
                                              resize_shape=[512, 512],
                                              tokenizer=tokenizer,
-                                             caption='brain',
+                                             caption=args.trigger_word,
                                              latent_res=args.latent_res,
                                              n_classes = args.n_classes,
-                                             single_modality = args.single_modality)
+                                             single_modality = args.single_modality,
+                                             mask_res = args.mask_res,)
             test_dataset = TrainDataset_Seg(root_dir=os.path.join(args.data_path, f'test'),
                                              resize_shape=[512, 512],
                                              tokenizer=tokenizer,
-                                             caption='brain',
+                                             caption=args.trigger_word,
                                              latent_res=args.latent_res,
                                              n_classes=args.n_classes,
-                                            single_modality = args.single_modality)
+                                            single_modality = args.single_modality,
+                                             mask_res = args.mask_res,)
     else :
         from data.dataset_teeth import TrainDataset_Seg as teeth_dataset
         train_dataset = teeth_dataset(root_dir=root_dir,
@@ -58,7 +60,6 @@ def call_dataset(args) :
                                         caption=args.trigger_word,
                                         latent_res=args.latent_res,
                                         n_classes=args.n_classes)
-
 
     train_dataloader = torch.utils.data.DataLoader(train_dataset,
                                              batch_size=args.batch_size,
