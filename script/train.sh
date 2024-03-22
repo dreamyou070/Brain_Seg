@@ -1,6 +1,6 @@
 # !/bin/bash
 #
-port_number=50655
+port_number=50644
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp"
