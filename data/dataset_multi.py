@@ -151,10 +151,12 @@ class TrainDataset_Seg(Dataset):
         # [2] gt dir
         gt_path = self.gt_paths[idx]  #
         gt_arr = np.load(gt_path)     # 128,128
-        gt_arr = np.where(gt_arr==4, 3, gt_arr)
+        # only brain
+        if self.caption == 'brain':
+            gt_arr = np.where(gt_arr==4, 3, gt_arr)
         gt_arr_ = to_categorical(gt_arr)
         class_num = gt_arr_.shape[-1]
-        gt = np.zeros((self.mask_res,self.mask_res,4))
+        gt = np.zeros((self.mask_res,self.mask_res,self.n_classes))
         gt[:,:,:class_num] = gt_arr_
         gt = torch.tensor(gt).permute(2,0,1)        # 4,128,128
 
