@@ -113,6 +113,8 @@ def main(args):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
+            gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,4,128,128
+            gt = gt.permute(0, 2, 3, 1).contiguous().view(-1, gt.shape[-1]).contiguous()    # 128*128,4
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
@@ -128,6 +130,24 @@ def main(args):
             masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous() # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous()
+
+            # [5.0] my liss
+            # masks_pred = [1,4,128,128]
+            if args.do_attn_loss :
+                masks_pred_permute = masks_pred.permute(0, 2, 3, 1).contiguous()                # 1,128,128,4
+                masks_pred_permute = torch.softmax(masks_pred_permute, dim=-1)                  # 1,128*
+                masks_pred_permute = masks_pred_permute.view(-1, masks_pred_permute.shape[-1])  # 128*128,4
+                class_num = masks_pred_permute.shape[-1]
+                attn_loss = torch.Tensor(0)
+                for class_idx in range(class_num):
+                    pred_attn_vector = masks_pred_permute[:, class_idx]  # 128*128
+                    activation_position = gt[:, class_idx]                     # 128*128
+                    deactivation_position = 1 - activation_position     # many 1
+                    total_attn = torch.ones_like(pred_attn_vector)
+                    activation_loss =  (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
+                    deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
+                    attn_loss += activation_loss + deactivation_loss
+                loss += attn_loss
 
             # [5.1] Multiclassification Loss
             loss = criterion(masks_pred_,  # 1,4,128,128
@@ -282,6 +302,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--check_training", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
+    parser.add_argument("--do_attn_loss", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
