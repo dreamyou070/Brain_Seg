@@ -183,4 +183,4 @@ class TrainDataset_Seg(Dataset):
                 "gt": gt,                      # [3,256,256]
                 "gt_flat" : gt_flat,           # [128*128]
                 "input_ids": input_ids,
-                sample_idx : sample_idx}
+                "sample_idx" : sample_idx}
