@@ -146,14 +146,15 @@ def main(args):
                 class_num = masks_pred_permute.shape[-1]
                 attn_loss = torch.Tensor(0).to(device)
                 for class_idx in range(class_num):
-                    pred_attn_vector = masks_pred_permute[:, class_idx].squeeze() # 128*128
-                    activation_position = gt[:, class_idx]                     # 128*128
-                    deactivation_position = 1 - activation_position     # many 1
-                    total_attn = torch.ones_like(pred_attn_vector)
-                    activation_loss =  (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
-                    deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
-                    #loss += activation_loss + deactivation_loss
-                    loss += deactivation_loss
+                    if class_idx == 2 :
+                        pred_attn_vector = masks_pred_permute[:, class_idx].squeeze() # 128*128
+                        activation_position = gt[:, class_idx]                     # 128*128
+                        deactivation_position = 1 - activation_position     # many 1
+                        total_attn = torch.ones_like(pred_attn_vector)
+                        activation_loss =  (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
+                        deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
+                        loss += activation_loss + deactivation_loss
+                        loss += deactivation_loss
                 #loss += attn_loss
 
 
