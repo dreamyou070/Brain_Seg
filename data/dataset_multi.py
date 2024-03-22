@@ -151,7 +151,6 @@ class TrainDataset_Seg(Dataset):
         # [2] gt dir
         gt_path = self.gt_paths[idx]  #
         gt_arr = np.load(gt_path)     # 128,128
-        print(f'gt_arr = {np.unique(gt_arr)}')
         # only brain
         if self.caption == 'brain':
             gt_arr = np.where(gt_arr==4, 3, gt_arr)
