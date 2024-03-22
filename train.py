@@ -2,21 +2,20 @@ import argparse, math, random, json
 from tqdm import tqdm
 from accelerate.utils import set_seed
 import torch
+from torch import nn
 import os
 from attention_store import AttentionStore
-from model.diffusion_model import transform_models_if_DDP
-from model.unet import unet_passing_argument
-from utils import get_epoch_ckpt_name, save_model, prepare_dtype, arg_as_list
-from utils.attention_control import passing_argument, register_attention_control
-from utils.accelerator_utils import prepare_accelerator
-from utils.optimizer_utils import get_optimizer, get_scheduler_fix
-from utils.model_utils import pe_model_save, te_model_save
-from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
 from data import call_dataset
 from model import call_model_package
 from model.segmentation_unet import Segmentation_Head
-from torch import nn
-from utils.diceloss import DiceLoss
+from model.diffusion_model import transform_models_if_DDP
+from model.unet import unet_passing_argument
+from utils import get_epoch_ckpt_name, prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
+from utils.attention_control import passing_argument, register_attention_control
+from utils.accelerator_utils import prepare_accelerator
+from utils.optimizer import get_optimizer, get_scheduler_fix
+from utils.saving import pe_model_save, save_model
+from utils.loss import FocalLoss, Multiclass_FocalLoss
 from utils.evaluate import evaluation_check
 
 def main(args):
@@ -41,12 +40,11 @@ def main(args):
     accelerator = prepare_accelerator(args)
     is_main_process = accelerator.is_main_process
 
-    print(f'\n step 4. model ')
+    print(f'\n step 4. model')
     weight_dtype, save_dtype = prepare_dtype(args)
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
     segmentation_head = Segmentation_Head(n_classes=args.n_classes,
-                                          kernel_size = args.kernel_size,
-                                          use_batchnorm=args.use_batchnorm)
+                                          kernel_size = args.kernel_size,)
 
 
     print(f'\n step 5. optimizer')
@@ -66,31 +64,11 @@ def main(args):
     print(f'\n step 7. loss function')
     criterion = nn.CrossEntropyLoss()
     loss_multi_focal = Multiclass_FocalLoss()
-    class_weight = None
-    if args.do_class_weight:
-        class_weight = {0: 0.0027217850085457886, 1: 0.22609416133509747, 2: 0.17582554657020089, 3: 0.5953585070861559}
-    dice_loss_fn = DiceLoss(mode='multiclass',
-                            classes=[0, 1, 2, 3],
-                            log_loss=True,
-                            from_logits=False,
-                            smooth=0.0,
-                            ignore_index=None,
-                            eps=1e-7,
-                            class_weight=class_weight)
-    dice_loss_anomal = DiceLoss(mode='multiclass',
-                                classes=[0, 1, 2, 3],
-                                log_loss=True,
-                                from_logits=False,
-                                smooth=0.0,
-                                ignore_index=0,
-                                eps=1e-7,
-                                class_weight=class_weight)
 
     print(f'\n step 8. model to device')
-    segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = accelerator.prepare(
-            segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder)
-
-
+    segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = \
+        accelerator.prepare(segmentation_head, unet, text_encoder, network, optimizer, train_dataloader,
+                            test_dataloader, lr_scheduler, position_embedder)
     text_encoders = transform_models_if_DDP([text_encoder])
     unet, network = transform_models_if_DDP([unet, network])
     if args.use_position_embedder:
@@ -133,11 +111,7 @@ def main(args):
             loss_dict = {}
             with torch.set_grad_enabled(True):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
-                if args.text_truncate :
-                    encoder_hidden_states = encoder_hidden_states[:,:2,:]
-            # ------------------------------------------------------------------------------------------------------------
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
-            gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,4,128,128
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
@@ -146,57 +120,26 @@ def main(args):
             query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
             controller.reset()
             q_dict = {}
-            k_dict = {}
-
-            def reshape_batch_dim_to_heads(tensor):
-                batch_size, seq_len, dim = tensor.shape
-                head_size = 8
-                tensor = tensor.reshape(batch_size // head_size, head_size, seq_len, dim) # 1,8,pix_num, dim -> 1,pix_nun, 8,dim
-                tensor = tensor.permute(0, 2, 1, 3).contiguous().reshape(batch_size // head_size, seq_len, dim * head_size) # 1, pix_num, long_dim
-                res = int(seq_len ** 0.5)
-                tensor = tensor.view(batch_size // head_size, res,res, dim * head_size).contiguous()
-                tensor = tensor.permute(0,3,1,2).contiguous()  # 1, dim, res,res
-                return tensor
-
             for layer in args.trg_layer_list:
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
                 res = int(query.shape[1] ** 0.5)
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
-                k_dict[res] = key_dict[layer][0]
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
-            key64 = k_dict[64]
-            # x16_out, x32_out, x64_out = [1,dim,res,res]
-            if not args.cross_attn_base :
-                masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
-            else :
-                masks_pred = segmentation_head(x16_out, x32_out, x64_out, key64)  # 1,4,128,128
+            masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous() # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous()
+
             # [5.1] Multiclassification Loss
-            #loss = criterion(masks_pred, # 1,4,128,128
-            #                 gt)         # 1,4,128,128
             loss = criterion(masks_pred_,  # 1,4,128,128
                              gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['cross_entropy_loss'] = loss.item()
 
             # [5.2] Focal Loss
-            #masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
-            #masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
             focal_loss = loss_multi_focal(masks_pred_,  # N,C
                                           gt_flat.squeeze().to(masks_pred.device))  # N
             loss += focal_loss
             loss_dict['focal_loss'] = focal_loss.item()
             # [5.3] Dice Loss
-
-            #y = gt_flat.view(128,128) # [128,128]
-            #if args.use_dice_anomal_loss:
-            #    dice_loss = dice_loss_anomal(y_pred=masks_pred, #
-            #                                  y_true=y.unsqueeze(0).to(torch.int64) #
-            #                                  )
-            #    loss += dice_loss
-            #else:
-            #    dice_loss = dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
-            #    loss += dice_loss
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
             if epoch == args.start_epoch:
@@ -219,23 +162,25 @@ def main(args):
             if global_step >= args.max_train_steps:
                 break
         # ----------------------------------------------------------------------------------------------------------- #
-        # [6] epoch final
         accelerator.wait_for_everyone()
         if is_main_process:
-            ckpt_name = get_epoch_ckpt_name(args, "." + args.save_model_as, epoch + 1)
-            save_model(args, ckpt_name, accelerator.unwrap_model(network), save_dtype)
+            saving_epoch = str(epoch+1).zfill(6)
+            save_model(args,
+                       saving_folder='model',
+                       saving_name = f'lora-{saving_epoch}.safetensors',
+                       unwrapped_nw=accelerator.unwrap_model(network),
+                       save_dtype=save_dtype)
             if position_embedder is not None:
-                position_embedder_base_save_dir = os.path.join(args.output_dir, 'position_embedder')
-                os.makedirs(position_embedder_base_save_dir, exist_ok=True)
-                p_save_dir = os.path.join(position_embedder_base_save_dir,
-                                          f'position_embedder_{epoch + 1}.safetensors')
-                pe_model_save(accelerator.unwrap_model(position_embedder), save_dtype, p_save_dir)
-            segmentation_base_save_dir = os.path.join(args.output_dir, 'segmentation')
-            os.makedirs(segmentation_base_save_dir, exist_ok=True)
-            p_save_dir = os.path.join(segmentation_base_save_dir,
-                                      f'segmentation_{epoch + 1}.safetensors')
-            pe_model_save(accelerator.unwrap_model(segmentation_head), save_dtype, p_save_dir)
-
+                save_model(args,
+                           saving_folder='position_embedder',
+                           saving_name = f'position_embedder-{saving_epoch}.safetensors',
+                           unwrapped_nw=accelerator.unwrap_model(position_embedder),
+                           save_dtype=save_dtype)
+            save_model(args,
+                       saving_folder='segmentation',
+                       saving_name = f'segmentation-{saving_epoch}.safetensors',
+                       unwrapped_nw=accelerator.unwrap_model(segmentation_head),
+                       save_dtype=save_dtype)
 
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
@@ -259,14 +204,13 @@ if __name__ == "__main__":
     # step 1. setting
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--output_dir', type=str, default='output')
-
     # step 2. dataset
+    parser.add_argument("--resize_shape", type=int, default=512)
     parser.add_argument('--data_path', type=str, default=r'../../../MyData/anomaly_detection/MVTec3D-AD')
     parser.add_argument('--obj_name', type=str, default='bottle')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--trigger_word', type=str)
     parser.add_argument("--latent_res", type=int, default=64)
-
     # step 3. preparing accelerator
     parser.add_argument("--mixed_precision", type=str, default="no", choices=["no", "fp16", "bf16"], )
     parser.add_argument("--save_precision", type=str, default=None, choices=[None, "float", "fp16", "bf16"], )
@@ -278,7 +222,6 @@ if __name__ == "__main__":
                         help="do not use fp16/bf16 VAE in mixed precision (use float VAE) / mixed precision", )
     parser.add_argument("--position_embedding_layer", type=str)
     parser.add_argument("--d_dim", default=320, type=int)
-
     # step 4. model
     parser.add_argument('--pretrained_model_name_or_path', type=str, default='facebook/diffusion-dalle')
     parser.add_argument("--clip_skip", type=int, default=None,
@@ -292,16 +235,16 @@ if __name__ == "__main__":
     parser.add_argument("--network_dropout", type=float, default=None, )
     parser.add_argument("--network_args", type=str, default=None, nargs="*", )
     parser.add_argument("--dim_from_weights", action="store_true", )
-
+    parser.add_argument("--n_classes", default=4, type=int)
+    parser.add_argument("--kernel_size", type=int, default=2)
+    parser.add_argument("--mask_res", type=int, default=128)
     # step 5. optimizer
     parser.add_argument("--optimizer_type", type=str, default="AdamW",
-                  help="AdamW , AdamW8bit, PagedAdamW8bit, PagedAdamW32bit, Lion8bit, PagedLion8bit, Lion, SGDNesterov,"
+              help="AdamW , AdamW8bit, PagedAdamW8bit, PagedAdamW32bit, Lion8bit, PagedLion8bit, Lion, SGDNesterov,"
                 "SGDNesterov8bit, DAdaptation(DAdaptAdamPreprint), DAdaptAdaGrad, DAdaptAdam, DAdaptAdan, DAdaptAdanIP,"
                              "DAdaptLion, DAdaptSGD, AdaFactor", )
-    parser.add_argument("--use_8bit_adam", action="store_true",
-                        help="use 8bit AdamW optimizer(requires bitsandbytes)", )
-    parser.add_argument("--use_lion_optimizer", action="store_true",
-                        help="use Lion optimizer (requires lion-pytorch)", )
+    parser.add_argument("--use_8bit_adam", action="store_true", help="use 8bit AdamW optimizer(requires bitsandbytes)",)
+    parser.add_argument("--use_lion_optimizer", action="store_true", help="use Lion optimizer (requires lion-pytorch)",)
     parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm, 0 for no clipping")
     parser.add_argument("--optimizer_args", type=str, default=None, nargs="*",
                         help='additional arguments for optimizer (like "weight_decay=0.01 betas=0.9,0.999 ...") ', )
@@ -320,50 +263,17 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', type=float, default=1e-5)
     parser.add_argument('--train_unet', action='store_true')
     parser.add_argument('--train_text_encoder', action='store_true')
-
     # step 10. training
     parser.add_argument("--save_model_as", type=str, default="safetensors",
                choices=[None, "ckpt", "pt", "safetensors"], help="format to save the model (default is .safetensors)",)
     parser.add_argument("--start_epoch", type=int, default=0)
     parser.add_argument("--max_train_epochs", type=int, default=None, )
     parser.add_argument("--gradient_checkpointing", action="store_true", help="enable gradient checkpointing")
-    parser.add_argument("--do_attn_loss", action='store_true')
-    parser.add_argument("--do_cls_train", action='store_true')
-    parser.add_argument("--attn_loss_weight", type=float, default=1.0)
-
-    parser.add_argument("--activating_loss_weight", type=float, default=1.0)
-    parser.add_argument('--deactivating_loss_weight', type=float, default=1.0)
-
     parser.add_argument("--trg_layer_list", type=arg_as_list, default=[])
-    parser.add_argument("--original_normalized_score", action='store_true')
-    parser.add_argument("--do_map_loss", action='store_true')
     parser.add_argument("--use_focal_loss", action='store_true')
-    parser.add_argument("--test_noise_predicting_task_loss", action='store_true')
-    parser.add_argument("--dist_loss_with_max", action='store_true')
-    parser.add_argument("--on_desktop", action='store_true')
-    parser.add_argument("--all_positional_embedder", action='store_true')
-    parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--position_embedder_weights", type=str, default=None)
-    parser.add_argument("--vae_pretrained_dir", type=str)
-    parser.add_argument("--seg_based_lora", action='store_true')
-    parser.add_argument("--train_single", action='store_true')
-    parser.add_argument("--resize_shape", type=int, default=512)
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
-    parser.add_argument("--do_class_weight", action='store_true')
-    parser.add_argument("--text_truncate", action='store_true')
-    parser.add_argument("--segment_use_raw_latent", action='store_true')
-    parser.add_argument("--use_dice_anomal_loss", action='store_true')
-    parser.add_argument("--n_classes", default=4, type=int)
-    parser.add_argument("--lora_inference", action='store_true')
-    parser.add_argument("--train_class12", action='store_true')
-    parser.add_argument("--cross_attn_base", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
-    parser.add_argument("--train_segmentation", action='store_true')
-    parser.add_argument("--use_batchnorm", action='store_true')
-    parser.add_argument("--use_channel_deconv", action='store_true')
-    parser.add_argument("--single_modality", action='store_true')
-    parser.add_argument("--kernel_size", type=int, default=2)
-    parser.add_argument("--mask_res", type=int, default=128)
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)

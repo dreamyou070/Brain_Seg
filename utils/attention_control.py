@@ -12,7 +12,6 @@ def passing_argument(args):
     argument = args
 
 
-
 def register_attention_control(unet: nn.Module,controller: AttentionStore):
 
     def ca_forward(self, layer_name):

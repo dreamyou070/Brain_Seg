@@ -2,26 +2,6 @@ import torch
 import argparse
 import os
 
-def get_noise_noisy_latents_and_timesteps(args, noise_scheduler, latents, noise = None):
-    # Sample noise that we'll add to the latents
-    if noise is None:
-        noise = torch.randn_like(latents, device=latents.device)
-
-    # Sample a random timestep for each image
-    b_size = latents.shape[0]
-    min_timestep = 0 if args.min_timestep is None else args.min_timestep
-    max_timestep = noise_scheduler.config.num_train_timesteps if args.max_timestep is None else args.max_timestep
-
-    timesteps = torch.randint(min_timestep, max_timestep, (b_size,), device=latents.device)
-    timesteps = timesteps.long()
-
-    # Add noise to the latents according to the noise magnitude at each timestep
-    # (this is the forward diffusion process)
-    noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
-
-    return noise, noisy_latents, timesteps
-
-
 
 def get_input_ids(tokenizer, caption):
     tokenizer_output = tokenizer(caption, padding="max_length", truncation=True,
@@ -70,29 +50,3 @@ def prepare_scheduler_for_custom_training(noise_scheduler, device):
     all_snr = (alpha / sigma) ** 2
 
     noise_scheduler.all_snr = all_snr.to(device)
-
-def pe_model_save(model, save_dtype, save_dir):
-    state_dict = model.state_dict()
-    for key in list(state_dict.keys()):
-        v = state_dict[key]
-        v = v.detach().clone().to("cpu").to(save_dtype)
-        state_dict[key] = v
-    _, file = os.path.split(save_dir)
-    if os.path.splitext(file)[1] == ".safetensors":
-        from safetensors.torch import save_file
-        save_file(state_dict, save_dir)
-    else:
-        torch.save(state_dict, save_dir)
-
-def te_model_save(model, save_dtype, save_dir):
-    state_dict = model.state_dict()
-    for key in list(state_dict.keys()):
-        v = state_dict[key]
-        v = v.detach().clone().to("cpu").to(save_dtype)
-        state_dict[key] = v
-    _, file = os.path.split(save_dir)
-    if os.path.splitext(file)[1] == ".safetensors":
-        from safetensors.torch import save_file
-        save_file(state_dict, save_dir)
-    else:
-        torch.save(state_dict, save_dir)
