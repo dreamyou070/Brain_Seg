@@ -68,9 +68,6 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
 
         for global_num, batch in enumerate(dataloader):
             encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
-            if args.text_truncate :
-                encoder_hidden_states = encoder_hidden_states[:,:2,:]
-            # ------------------------------------------------------------------------------------------------------------
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
             gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,4,128,128
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
