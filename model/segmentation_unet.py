@@ -150,7 +150,7 @@ class Segmentation_Head_with_key(nn.Module):
         self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
         self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
         self.up3 = (Up_conv2(320, 320))
-        self.outc = (OutConv(160, n_classes))
+        #self.outc = (OutConv(160, n_classes))
 
     def forward(self, x16_out, x32_out, x64_out, key64):
 
