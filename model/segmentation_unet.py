@@ -93,13 +93,15 @@ class Segmentation_Head(nn.Module):
         factor = 2 if bilinear else 1
         self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
         self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up3 = (Up_conv(320, kernel_size = kernel_size)) # 64 -> 154
-        self.outc = (OutConv(160, n_classes))
+        self.up3 = (Up_conv(320, kernel_size = 2)) # 64 -> 154
+        self.up4 = (Up_conv(160, kernel_size=2))
+        self.outc = (OutConv(80, n_classes))
 
     def forward(self, x16_out, x32_out, x64_out):
 
         x = self.up1(x16_out,x32_out)  # 1,640,32,32 -> 640*32
         x = self.up2(x, x64_out)    # 1,320,64,64
         x3_out = self.up3(x)        # 1,160,128,128
-        logits = self.outc(x3_out)  # 1,4, 128,128
+        x4_out = self.up4(x3_out)   # 1,160,256,256
+        logits = self.outc(x4_out)  # 1,4, 128,128
         return logits
