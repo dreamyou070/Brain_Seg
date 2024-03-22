@@ -113,9 +113,10 @@ def main(args):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
-            gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,4,128,128
-            gt = gt.permute(0, 2, 3, 1).contiguous().view(-1, gt.shape[-1]).contiguous()    # 128*128,4
-            print(f'gt (256*256,4)= {gt.shape}')
+            gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,3,256,256
+            gt = gt.permute(0, 2, 3, 1).contiguous()#.view(-1, gt.shape[-1]).contiguous()   # 1,256,256,3
+            gt = gt.view(-1, gt.shape[-1]).contiguous()                                     # 256*256,3
+            print(f'gt (256*256,3)= {gt.shape}')
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
