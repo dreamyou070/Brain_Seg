@@ -4,7 +4,6 @@ from accelerate.utils import set_seed
 import torch
 import os
 from attention_store import AttentionStore
-from attention_store.normal_activator import NormalActivator
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import get_epoch_ckpt_name, save_model, prepare_dtype, arg_as_list
@@ -13,10 +12,12 @@ from utils.accelerator_utils import prepare_accelerator
 from utils.optimizer_utils import get_optimizer, get_scheduler_fix
 from utils.model_utils import pe_model_save, te_model_save
 from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
-from data.prepare_dataset import call_dataset
+from data import call_dataset
 from model import call_model_package
-from attention_store.normal_activator import passing_normalize_argument
+from model.segmentation_unet import Segmentation_Head
 from torch import nn
+from utils.diceloss import DiceLoss
+from utils.evaluate import evaluation_check
 
 def main(args):
 
@@ -34,7 +35,7 @@ def main(args):
     if args.seed is None :
         args.seed = random.randint(0, 2 ** 32)
     set_seed(args.seed)
-    train_dataloader = call_dataset(args)
+    train_dataloader, test_dataloader = call_dataset(args)
 
     print(f'\n step 3. preparing accelerator')
     accelerator = prepare_accelerator(args)
@@ -43,48 +44,53 @@ def main(args):
     print(f'\n step 4. model ')
     weight_dtype, save_dtype = prepare_dtype(args)
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
+    segmentation_head = Segmentation_Head(n_classes=args.n_classes,
+                                          kernel_size = args.kernel_size,
+                                          use_batchnorm=args.use_batchnorm)
+
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
-    trainable_params = network.prepare_optimizer_params(args.text_encoder_lr,
-                                                        args.unet_lr,
-                                                        args.learning_rate)
+    trainable_params = network.prepare_optimizer_params(args.text_encoder_lr, args.unet_lr, args.learning_rate)
     if args.use_position_embedder:
-        trainable_params.append({"params": position_embedder.parameters(), "lr": args.learning_rate})
+        trainable_params.append({"params": position_embedder.parameters(),
+                                 "lr": args.learning_rate})
+    trainable_params.append({"params": segmentation_head.parameters(),
+                             "lr": args.learning_rate})
+
     optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params)
 
     print(f'\n step 6. lr')
     lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
 
     print(f'\n step 7. loss function')
-    loss_focal = FocalLoss()
-    loss_l2 = torch.nn.modules.loss.MSELoss(reduction='none')
-    multiclassification_loss_fn = nn.CrossEntropyLoss()
-    if args.multiclassification_focal_loss :
-        multiclassification_loss_fn = Multiclass_FocalLoss()
-
-    print(f' (7.2) call class weight')
-    import numpy as np
-    class_weight_file = r'/share0/dreamyou070/dreamyou070/BrainSeg/Brain_Seg/data/class_weights.npy'
-    weight = np.load(class_weight_file)
-    total_weight = weight.sum()
-    weight = weight / total_weight
-    class_weight = dict(enumerate(weight))
-    normal_activator = NormalActivator(loss_focal,
-                                       loss_l2,
-                                       multiclassification_loss_fn,
-                                       args.use_focal_loss,
-                                       class_weight)
-
-
+    criterion = nn.CrossEntropyLoss()
+    loss_multi_focal = Multiclass_FocalLoss()
+    class_weight = None
+    if args.do_class_weight:
+        class_weight = {0: 0.0027217850085457886, 1: 0.22609416133509747, 2: 0.17582554657020089, 3: 0.5953585070861559}
+    dice_loss_fn = DiceLoss(mode='multiclass',
+                            classes=[0, 1, 2, 3],
+                            log_loss=True,
+                            from_logits=False,
+                            smooth=0.0,
+                            ignore_index=None,
+                            eps=1e-7,
+                            class_weight=class_weight)
+    dice_loss_anomal = DiceLoss(mode='multiclass',
+                                classes=[0, 1, 2, 3],
+                                log_loss=True,
+                                from_logits=False,
+                                smooth=0.0,
+                                ignore_index=0,
+                                eps=1e-7,
+                                class_weight=class_weight)
 
     print(f'\n step 8. model to device')
-    if args.use_position_embedder  :
-        unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, position_embedder = accelerator.prepare(
-            unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler, position_embedder)
-    else:
-        unet, text_encoder, network, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(unet, text_encoder,
-                                                                    network, optimizer, train_dataloader,  lr_scheduler)
+    segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = accelerator.prepare(
+            segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder)
+
+
     text_encoders = transform_models_if_DDP([text_encoder])
     unet, network = transform_models_if_DDP([unet, network])
     if args.use_position_embedder:
@@ -92,6 +98,7 @@ def main(args):
     if args.gradient_checkpointing:
         unet.train()
         position_embedder.train()
+        segmentation_head.train()
         for t_enc in text_encoders:
             t_enc.train()
             if args.train_text_encoder:
@@ -116,16 +123,6 @@ def main(args):
     global_step = 0
     loss_list = []
 
-    def resize_query_features(query):
-
-        head_num, pix_num, dim = query.shape
-        res = int(pix_num ** 0.5)  # 8
-        query_map = query.view(head_num, res, res, dim).permute(0, 3, 1, 2).contiguous()  # 1, channel, res, res
-        resized_query_map = nn.functional.interpolate(query_map, size=(64, 64), mode='bilinear')  # 1, channel, 64,  64
-        resized_query = resized_query_map.permute(0, 2, 3, 1).contiguous().squeeze()  # head, 64, 64, channel
-        resized_query = resized_query.view(head_num, 64 * 64, dim)  # 8, 64*64, dim
-        return resized_query
-
     for epoch in range(args.start_epoch, args.max_train_epochs):
 
         epoch_loss_total = 0
@@ -133,52 +130,73 @@ def main(args):
 
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
-            loss = torch.tensor(0.0, dtype=weight_dtype, device=accelerator.device)
             loss_dict = {}
-
             with torch.set_grad_enabled(True):
-                # CLS, nec, edrma, tumor
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
+                if args.text_truncate :
+                    encoder_hidden_states = encoder_hidden_states[:,:2,:]
             # ------------------------------------------------------------------------------------------------------------
-            image = batch['image'].to(dtype=weight_dtype)           # 1,3, 512,512
-            gt = batch['gt'].to(dtype=weight_dtype).squeeze()       # 64, 64, 4
-            gt_vector = batch['gt_vector'].to(dtype=weight_dtype).squeeze()  # 1, 64*64
+            image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
+            gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,4,128,128
+            gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
                 unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
             query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
             controller.reset()
-            query_list, key_list = [], []
+            q_dict = {}
+            k_dict = {}
+
+            def reshape_batch_dim_to_heads(tensor):
+                batch_size, seq_len, dim = tensor.shape
+                head_size = 8
+                tensor = tensor.reshape(batch_size // head_size, head_size, seq_len, dim) # 1,8,pix_num, dim -> 1,pix_nun, 8,dim
+                tensor = tensor.permute(0, 2, 1, 3).contiguous().reshape(batch_size // head_size, seq_len, dim * head_size) # 1, pix_num, long_dim
+                res = int(seq_len ** 0.5)
+                tensor = tensor.view(batch_size // head_size, res,res, dim * head_size).contiguous()
+                tensor = tensor.permute(0,3,1,2).contiguous()  # 1, dim, res,res
+                return tensor
+
             for layer in args.trg_layer_list:
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                query_list.append(resize_query_features(query))  # head, pix_num, dim
-                key_list.append(key_dict[layer][0])  # head, pix_num, dim
-            # [1] local
-            local_query = torch.cat(query_list, dim=-1)  # head, pix_num, long_dim
-            local_key = torch.cat(key_list, dim=-1).squeeze()  # head, 77, long_dim
-            # learnable weight ?
-            # local_query = [8, 64*64, 280] = [64*64, 2240]
-            attention_scores = torch.baddbmm(torch.empty(local_query.shape[0], local_query.shape[1], local_key.shape[1], dtype=query.dtype,
-                                                         device=query.device), local_query, local_key.transpose(-1, -2), beta=0, )
-            attn = attention_scores.softmax(dim=-1)[:, :, :4]
-            normal_activator.collect_attention_scores_multi(attn, gt)
-            normal_activator.collect_anomal_map_loss_multi_crossentropy(attn, gt_vector)
+                res = int(query.shape[1] ** 0.5)
+                q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
+                k_dict[res] = key_dict[layer][0]
+            x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
+            key64 = k_dict[64]
+            # x16_out, x32_out, x64_out = [1,dim,res,res]
+            if not args.cross_attn_base :
+                masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
+            else :
+                masks_pred = segmentation_head(x16_out, x32_out, x64_out, key64)  # 1,4,128,128
+            masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous() # 1,128,128,4
+            masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous()
+            # [5.1] Multiclassification Loss
+            #loss = criterion(masks_pred, # 1,4,128,128
+            #                 gt)         # 1,4,128,128
+            loss = criterion(masks_pred_,  # 1,4,128,128
+                             gt_flat.squeeze().to(torch.long))  # 128*128
+            loss_dict['cross_entropy_loss'] = loss.item()
 
-            # [5] backprop
-            if args.do_attn_loss:
-                activating_loss, deactivating_loss = normal_activator.generate_attention_loss_multi()
-                loss += args.activating_loss_weight * activating_loss.mean()
-                loss_dict['activating_loss'] = activating_loss.mean().item()
-                loss += args.deactivating_loss_weight * deactivating_loss.mean()
-                loss_dict['deactivating_loss'] = deactivating_loss.mean().item()
+            # [5.2] Focal Loss
+            #masks_pred_ = masks_pred.permute(0, 2, 3, 1) # 1,128,128,4
+            #masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1])
+            focal_loss = loss_multi_focal(masks_pred_,  # N,C
+                                          gt_flat.squeeze().to(masks_pred.device))  # N
+            loss += focal_loss
+            loss_dict['focal_loss'] = focal_loss.item()
+            # [5.3] Dice Loss
 
-            if args.do_map_loss:
-                # self.anomal_map_loss
-                map_loss = normal_activator.generate_anomal_map_loss()
-                loss += map_loss
-                loss_dict['map_loss'] = map_loss.item()
-
+            #y = gt_flat.view(128,128) # [128,128]
+            #if args.use_dice_anomal_loss:
+            #    dice_loss = dice_loss_anomal(y_pred=masks_pred, #
+            #                                  y_true=y.unsqueeze(0).to(torch.int64) #
+            #                                  )
+            #    loss += dice_loss
+            #else:
+            #    dice_loss = dice_loss_fn(y_pred=masks_pred, y_true=y.unsqueeze(0).to(torch.int64))
+            #    loss += dice_loss
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
             if epoch == args.start_epoch:
@@ -198,7 +216,6 @@ def main(args):
                 global_step += 1
             if is_main_process:
                 progress_bar.set_postfix(**loss_dict)
-            normal_activator.reset()
             if global_step >= args.max_train_steps:
                 break
         # ----------------------------------------------------------------------------------------------------------- #
@@ -213,7 +230,28 @@ def main(args):
                 p_save_dir = os.path.join(position_embedder_base_save_dir,
                                           f'position_embedder_{epoch + 1}.safetensors')
                 pe_model_save(accelerator.unwrap_model(position_embedder), save_dtype, p_save_dir)
+            segmentation_base_save_dir = os.path.join(args.output_dir, 'segmentation')
+            os.makedirs(segmentation_base_save_dir, exist_ok=True)
+            p_save_dir = os.path.join(segmentation_base_save_dir,
+                                      f'segmentation_{epoch + 1}.safetensors')
+            pe_model_save(accelerator.unwrap_model(segmentation_head), save_dtype, p_save_dir)
+
+
+        # ----------------------------------------------------------------------------------------------------------- #
+        # [7] evaluate
+        IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
+                                                      text_encoder, unet, vae, controller, weight_dtype,
+                                                      position_embedder, args)
+        print(f'IOU_keras = {IOU_dict}')
+        # saving
+        score_save_dir = os.path.join(args.output_dir, 'score.txt')
+        with open(score_save_dir, 'a') as f:
+            for k in IOU_dict:
+                f.write(f'class {k} = {IOU_dict[k]} ')
+            f.write(f'| dice_coeff = {dice_coeff}')
+            f.write(f'\n')
     accelerator.end_training()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -307,18 +345,28 @@ if __name__ == "__main__":
     parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--position_embedder_weights", type=str, default=None)
     parser.add_argument("--vae_pretrained_dir", type=str)
-    parser.add_argument("--local_hidden_states_globalize", action='store_true')
-    parser.add_argument("--normal_activating_test", action='store_true')
+    parser.add_argument("--seg_based_lora", action='store_true')
     parser.add_argument("--train_single", action='store_true')
     parser.add_argument("--resize_shape", type=int, default=512)
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
     parser.add_argument("--do_class_weight", action='store_true')
+    parser.add_argument("--text_truncate", action='store_true')
+    parser.add_argument("--segment_use_raw_latent", action='store_true')
+    parser.add_argument("--use_dice_anomal_loss", action='store_true')
+    parser.add_argument("--n_classes", default=4, type=int)
+    parser.add_argument("--lora_inference", action='store_true')
     parser.add_argument("--train_class12", action='store_true')
+    parser.add_argument("--cross_attn_base", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
+    parser.add_argument("--train_segmentation", action='store_true')
+    parser.add_argument("--use_batchnorm", action='store_true')
+    parser.add_argument("--use_channel_deconv", action='store_true')
+    parser.add_argument("--single_modality", action='store_true')
+    parser.add_argument("--kernel_size", type=int, default=2)
+    parser.add_argument("--mask_res", type=int, default=128)
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
-    passing_normalize_argument(args)
     from data.dataset_multi import passing_mvtec_argument
     passing_mvtec_argument(args)
     main(args)
