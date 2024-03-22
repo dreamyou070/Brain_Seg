@@ -25,4 +25,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --use_position_embedder \
  --n_classes 3 \
  --kernel_size 4 \
- --mask_res 256
+ --mask_res 256 --check_training

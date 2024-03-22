@@ -52,7 +52,7 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
         y = torch.cat(y_true_list)
 
         score = confusion_matrix(y, y_hat)
-        print(f'score = {score.shape}')
+        print(f'score = {score}')
         actual_axis, pred_axis = score.shape
         IOU_dict = {}
         for actual_idx in range(actual_axis):

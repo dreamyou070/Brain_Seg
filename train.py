@@ -183,9 +183,16 @@ def main(args):
                        save_dtype=save_dtype)
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
-        IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
-                                                      text_encoder, unet, vae, controller, weight_dtype,
-                                                      position_embedder, args)
+
+        if args.check_training :
+            print(f'test with training data')
+            IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, train_dataloader, accelerator.device,
+                                                          text_encoder, unet, vae, controller, weight_dtype,
+                                                          position_embedder, args)
+        else :
+            IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
+                                                          text_encoder, unet, vae, controller, weight_dtype,
+                                                          position_embedder, args)
         print(f'IOU_dict = {IOU_dict}')
         # saving
         score_save_dir = os.path.join(args.output_dir, 'score.txt')
@@ -273,6 +280,7 @@ if __name__ == "__main__":
     parser.add_argument("--position_embedder_weights", type=str, default=None)
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
     parser.add_argument("--use_position_embedder", action='store_true')
+    parser.add_argument("--check_training", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     args = parser.parse_args()
     unet_passing_argument(args)
