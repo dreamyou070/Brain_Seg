@@ -29,10 +29,10 @@ def register_attention_control(unet: nn.Module,controller: AttentionStore):
 
             query = self.to_q(hidden_states)
             context = context if context is not None else hidden_states
-            key = self.to_k(context)
+            key_ = self.to_k(context)
             value = self.to_v(context)
             query = self.reshape_heads_to_batch_dim(query)
-            key = self.reshape_heads_to_batch_dim(key)
+            key = self.reshape_heads_to_batch_dim(key_)
             value = self.reshape_heads_to_batch_dim(value)
             if self.upcast_attention:
                 query = query.float()
@@ -40,7 +40,7 @@ def register_attention_control(unet: nn.Module,controller: AttentionStore):
             """ Second Trial """
             if trg_layer_list is not None and layer_name in trg_layer_list :
                 controller.save_query((query * self.scale), layer_name) # query = batch, seq_len, dim
-                controller.save_key(key, layer_name)
+                controller.save_key(key_, layer_name)
             attention_scores = torch.baddbmm(
                 torch.empty(query.shape[0], query.shape[1], key.shape[1], dtype=query.dtype, device=query.device),
                 query, key.transpose(-1, -2),
