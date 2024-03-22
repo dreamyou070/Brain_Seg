@@ -13,53 +13,37 @@ def call_dataset(args) :
         from model.tokenizer import load_tokenizer
         tokenizer = load_tokenizer(args)
 
-    if args.trigger_word != 'teeth' :
-
-        if not args.train_segmentation :
-            dataset_class = TrainDataset_Single
-            train_dataset = dataset_class(root_dir=root_dir,
-                                        resize_shape=[512, 512],
-                                        tokenizer=tokenizer,
-                                        caption=args.trigger_word,
-                                        latent_res=args.latent_res,
-                                        mask_res = args.mask_res,)
-            test_dataset = dataset_class(root_dir=os.path.join(args.data_path, f'test'),
-                                        resize_shape=[512, 512],
-                                        tokenizer=tokenizer,
-                                        caption=args.trigger_word,
-                                        latent_res=args.latent_res,
-                                        mask_res = args.mask_res,)
-        else :
-            train_dataset = TrainDataset_Seg(root_dir=root_dir,
-                                             resize_shape=[512, 512],
-                                             tokenizer=tokenizer,
-                                             caption=args.trigger_word,
-                                             latent_res=args.latent_res,
-                                             n_classes = args.n_classes,
-                                             single_modality = args.single_modality,
-                                             mask_res = args.mask_res,)
-            test_dataset = TrainDataset_Seg(root_dir=os.path.join(args.data_path, f'test'),
-                                             resize_shape=[512, 512],
-                                             tokenizer=tokenizer,
-                                             caption=args.trigger_word,
-                                             latent_res=args.latent_res,
-                                             n_classes=args.n_classes,
-                                            single_modality = args.single_modality,
-                                             mask_res = args.mask_res,)
+    if not args.train_segmentation :
+        dataset_class = TrainDataset_Single
+        train_dataset = dataset_class(root_dir=root_dir,
+                                    resize_shape=[512, 512],
+                                    tokenizer=tokenizer,
+                                    caption=args.trigger_word,
+                                    latent_res=args.latent_res,
+                                    mask_res = args.mask_res,)
+        test_dataset = dataset_class(root_dir=os.path.join(args.data_path, f'test'),
+                                    resize_shape=[512, 512],
+                                    tokenizer=tokenizer,
+                                    caption=args.trigger_word,
+                                    latent_res=args.latent_res,
+                                    mask_res = args.mask_res,)
     else :
-        from data.dataset_teeth import TrainDataset_Seg as teeth_dataset
-        train_dataset = teeth_dataset(root_dir=root_dir,
+        train_dataset = TrainDataset_Seg(root_dir=root_dir,
                                          resize_shape=[512, 512],
                                          tokenizer=tokenizer,
                                          caption=args.trigger_word,
                                          latent_res=args.latent_res,
-                                         n_classes=args.n_classes)
-        test_dataset = teeth_dataset(root_dir=os.path.join(args.data_path, f'test'),
-                                        resize_shape=[512, 512],
-                                        tokenizer=tokenizer,
-                                        caption=args.trigger_word,
-                                        latent_res=args.latent_res,
-                                        n_classes=args.n_classes)
+                                         n_classes = args.n_classes,
+                                         single_modality = args.single_modality,
+                                         mask_res = args.mask_res,)
+        test_dataset = TrainDataset_Seg(root_dir=os.path.join(args.data_path, f'test'),
+                                         resize_shape=[512, 512],
+                                         tokenizer=tokenizer,
+                                         caption=args.trigger_word,
+                                         latent_res=args.latent_res,
+                                         n_classes=args.n_classes,
+                                        single_modality = args.single_modality,
+                                         mask_res = args.mask_res,)
 
     train_dataloader = torch.utils.data.DataLoader(train_dataset,
                                              batch_size=args.batch_size,
