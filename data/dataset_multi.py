@@ -154,6 +154,8 @@ class TrainDataset_Seg(Dataset):
         # only brain
         if self.caption == 'brain':
             gt_arr = np.where(gt_arr==4, 3, gt_arr)
+        if self.n_classes == 2 :
+            gt_arr = np.where(gt_arr > 1, 1, gt_arr)
         gt_arr_ = to_categorical(gt_arr)
         class_num = gt_arr_.shape[-1]
         gt = np.zeros((self.mask_res,self.mask_res,self.n_classes))
