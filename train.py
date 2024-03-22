@@ -132,6 +132,11 @@ def main(args):
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous() # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous()
 
+            # [5.1] Multiclassification Loss
+            loss = criterion(masks_pred_,  # 1,4,128,128
+                             gt_flat.squeeze().to(torch.long))  # 128*128
+            loss_dict['cross_entropy_loss'] = loss.item()
+
             # [5.0] my liss
             # masks_pred = [1,4,128,128]
             if args.do_attn_loss :
@@ -150,10 +155,7 @@ def main(args):
                     attn_loss += activation_loss + deactivation_loss
                 loss += attn_loss
 
-            # [5.1] Multiclassification Loss
-            loss = criterion(masks_pred_,  # 1,4,128,128
-                             gt_flat.squeeze().to(torch.long))  # 128*128
-            loss_dict['cross_entropy_loss'] = loss.item()
+
 
             # [5.2] Focal Loss
             focal_loss = loss_multi_focal(masks_pred_,  # N,C
