@@ -137,9 +137,6 @@ def main(args):
                              gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['cross_entropy_loss'] = loss.item()
 
-            print(f'loss = {loss}')
-            print(f'loss shape = {loss.shape}')
-
             # [5.0] my liss
             # masks_pred = [1,4,128,128]
             if args.do_attn_loss :
@@ -155,10 +152,9 @@ def main(args):
                     total_attn = torch.ones_like(pred_attn_vector)
                     activation_loss =  (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
                     deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
-                    print(f'activation_loss = {activation_loss}')
-                    print(f'deactivation_loss.shape = {deactivation_loss.shape}')
-                    attn_loss += activation_loss + deactivation_loss
-                loss += attn_loss
+                    #loss += activation_loss + deactivation_loss
+                    loss += deactivation_loss
+                #loss += attn_loss
 
 
 
