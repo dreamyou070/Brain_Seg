@@ -12,7 +12,7 @@ def call_dataset(args) :
         from model.tokenizer import load_tokenizer
         tokenizer = load_tokenizer(args)
 
-    if args.trigger_word == 'brain' :
+    if args.trigger_word != 'teeth' :
 
         if not args.train_segmentation :
             dataset_class = TrainDataset_Single
