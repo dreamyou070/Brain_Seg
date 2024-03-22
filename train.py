@@ -139,23 +139,27 @@ def main(args):
 
             # [5.0] my liss
             # masks_pred = [1,4,128,128]
-            if args.do_attn_loss :
-                masks_pred_permute = masks_pred.permute(0, 2, 3, 1).contiguous()                # 1,128,128,4
-                masks_pred_permute = torch.softmax(masks_pred_permute, dim=-1)                  # 1,128*
-                masks_pred_permute = masks_pred_permute.view(-1, masks_pred_permute.shape[-1])  # 128*128,4
-                class_num = masks_pred_permute.shape[-1]
-                attn_loss = torch.Tensor(0).to(device)
-                for class_idx in range(class_num):
-                    if class_idx == 2 :
-                        pred_attn_vector = masks_pred_permute[:, class_idx].squeeze() # 128*128
-                        activation_position = gt[:, class_idx]                     # 128*128
-                        deactivation_position = 1 - activation_position     # many 1
-                        total_attn = torch.ones_like(pred_attn_vector)
-                        activation_loss =  (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
-                        deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
-                        loss += activation_loss + deactivation_loss
-                        loss += deactivation_loss
-                #loss += attn_loss
+            print(f'batch sample_idx = {batch["sample_idx"]} ')
+            if batch['sample_idx'] == 1 :
+
+
+                if args.do_attn_loss :
+                    masks_pred_permute = masks_pred.permute(0, 2, 3, 1).contiguous()                # 1,128,128,4
+                    masks_pred_permute = torch.softmax(masks_pred_permute, dim=-1)                  # 1,128*
+                    masks_pred_permute = masks_pred_permute.view(-1, masks_pred_permute.shape[-1])  # 128*128,4
+                    class_num = masks_pred_permute.shape[-1]
+                    attn_loss = torch.Tensor(0).to(device)
+                    for class_idx in range(class_num):
+                        if class_idx == 2 :
+                            pred_attn_vector = masks_pred_permute[:, class_idx].squeeze() # 128*128
+                            activation_position = gt[:, class_idx]                     # 128*128
+                            deactivation_position = 1 - activation_position     # many 1
+                            total_attn = torch.ones_like(pred_attn_vector)
+                            activation_loss =  (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
+                            deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
+                            loss += activation_loss + deactivation_loss
+                            loss += deactivation_loss
+                    #loss += attn_loss
 
 
 

@@ -152,6 +152,11 @@ class TrainDataset_Seg(Dataset):
         # [2] gt dir
         gt_path = self.gt_paths[idx]  #
         gt_arr = np.load(gt_path)     # 256,256
+
+        sample_check = np.unique(gt_arr)
+        sample_idx = 0
+        if 2 in sample_check :
+            sample_idx = 1
         # only brain
         if self.caption == 'brain':
             gt_arr = np.where(gt_arr==4, 3, gt_arr)
@@ -177,4 +182,5 @@ class TrainDataset_Seg(Dataset):
         return {'image': self.transform(img),  # [3,512,512]
                 "gt": gt,                      # [3,256,256]
                 "gt_flat" : gt_flat,           # [128*128]
-                "input_ids": input_ids}
+                "input_ids": input_ids,
+                sample_idx : sample_idx}
