@@ -115,6 +115,7 @@ def main(args):
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
             gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,4,128,128
             gt = gt.permute(0, 2, 3, 1).contiguous().view(-1, gt.shape[-1]).contiguous()    # 128*128,4
+            print(f'gt (256*256,4)= {gt.shape}')
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
@@ -140,9 +141,10 @@ def main(args):
                 class_num = masks_pred_permute.shape[-1]
                 attn_loss = torch.Tensor(0)
                 for class_idx in range(class_num):
-                    pred_attn_vector = masks_pred_permute[:, class_idx]  # 128*128
+                    pred_attn_vector = masks_pred_permute[:, class_idx].squeeze() # 128*128
                     activation_position = gt[:, class_idx]                     # 128*128
                     deactivation_position = 1 - activation_position     # many 1
+                    print(f'activation_position = {activation_position.shape}')
                     total_attn = torch.ones_like(pred_attn_vector)
                     activation_loss =  (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
                     deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
