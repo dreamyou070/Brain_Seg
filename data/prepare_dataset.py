@@ -19,9 +19,13 @@ def call_dataset(args) :
             train_dataset = dataset_class(root_dir=root_dir,
                                         resize_shape=[512, 512],
                                         tokenizer=tokenizer,
-                                        caption='brain',
+                                        caption=args.trigger_word,
                                         latent_res=args.latent_res, )
-            test_dataset = train_dataset
+            test_dataset = dataset_class(root_dir=os.path.join(args.data_path, f'test'),
+                                        resize_shape=[512, 512],
+                                        tokenizer=tokenizer,
+                                        caption=args.trigger_word,
+                                        latent_res=args.latent_res, )
         else :
             train_dataset = TrainDataset_Seg(root_dir=root_dir,
                                              resize_shape=[512, 512],
