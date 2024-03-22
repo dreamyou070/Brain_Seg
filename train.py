@@ -140,8 +140,6 @@ def main(args):
             # [5.0] my liss
             # masks_pred = [1,4,128,128]
             if batch['sample_idx'] == 1 :
-                print(f'class 2 sample')
-
 
                 if args.do_attn_loss :
                     masks_pred_permute = masks_pred.permute(0, 2, 3, 1).contiguous()                # 1,128,128,4
