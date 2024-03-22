@@ -30,6 +30,7 @@ def register_attention_control(unet: nn.Module,controller: AttentionStore):
             query = self.to_q(hidden_states)
             context = context if context is not None else hidden_states
             key = self.to_k(context)
+            print(f'layer_name = {layer_name} | k = {key.shape}')
             value = self.to_v(context)
             query = self.reshape_heads_to_batch_dim(query)
             key = self.reshape_heads_to_batch_dim(key)
