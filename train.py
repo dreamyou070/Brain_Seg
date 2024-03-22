@@ -105,7 +105,7 @@ def main(args):
 
         epoch_loss_total = 0
         accelerator.print(f"\nepoch {epoch + 1}/{args.start_epoch + args.max_train_epochs}")
-        """
+
         for step, batch in enumerate(train_dataloader):
             device = accelerator.device
             loss_dict = {}
@@ -181,8 +181,6 @@ def main(args):
                        saving_name = f'segmentation-{saving_epoch}.safetensors',
                        unwrapped_nw=accelerator.unwrap_model(segmentation_head),
                        save_dtype=save_dtype)
-        """
-
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
         IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
