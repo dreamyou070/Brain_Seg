@@ -273,6 +273,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_focal_loss", action='store_true')
     parser.add_argument("--position_embedder_weights", type=str, default=None)
     parser.add_argument("--multiclassification_focal_loss", action='store_true')
+    parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     args = parser.parse_args()
     unet_passing_argument(args)
