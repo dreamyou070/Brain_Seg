@@ -14,7 +14,7 @@ from utils.model_utils import pe_model_save, te_model_save
 from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
 from data.prepare_dataset import call_dataset
 from model import call_model_package
-from model.segmentation_unet import Segmentation_Head
+from model.segmentation_unet import Segmentation_Head, Segmentation_Head_with_key
 from model.channelwise import Channel_DeConv, Channel_DeConv_2
 from attention_store.normal_activator import passing_normalize_argument
 from torch import nn
@@ -47,6 +47,10 @@ def main(args):
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
     segmentation_head = Segmentation_Head(n_classes=args.n_classes,
                                           use_batchnorm=args.use_batchnorm)
+    if args.cross_attn_base :
+        segmentation_head = Segmentation_Head_with_key(n_classes=args.n_classes,
+                                              use_batchnorm=args.use_batchnorm)
+
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -155,6 +159,7 @@ def main(args):
             query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
             controller.reset()
             q_dict = {}
+            k_dict = {}
 
             def reshape_batch_dim_to_heads(tensor):
                 batch_size, seq_len, dim = tensor.shape
@@ -168,12 +173,16 @@ def main(args):
 
             for layer in args.trg_layer_list:
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
-                # resizing
                 res = int(query.shape[1] ** 0.5)
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
+                k_dict[res] = key_dict[layer][0]
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
+            key64 = k_dict[64]
             # x16_out, x32_out, x64_out = [1,dim,res,res]
-            masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
+            if not args.cross_attn_base :
+                masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
+            else :
+                masks_pred = segmentation_head(x16_out, x32_out, x64_out, key64)  # 1,4,128,128
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous() # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous()
             # [5.1] Multiclassification Loss
@@ -360,6 +369,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_classes", default=4, type=int)
     parser.add_argument("--lora_inference", action='store_true')
     parser.add_argument("--train_class12", action='store_true')
+    parser.add_argument("--cross_attn_base", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     parser.add_argument("--train_segmentation", action='store_true')
     parser.add_argument("--use_batchnorm", action='store_true')

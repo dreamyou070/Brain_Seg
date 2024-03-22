@@ -24,4 +24,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --resize_shape 512 --latent_res 64 --multiclassification_focal_loss --multiclassification_focal_loss \
  --train_segmentation \
  --use_position_embedder \
- --n_classes 4 --single_modality
+ --n_classes 4 --cross_attn_base
