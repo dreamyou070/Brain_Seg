@@ -14,7 +14,7 @@ from utils.model_utils import pe_model_save, te_model_save
 from utils.utils_loss import FocalLoss, Multiclass_FocalLoss
 from data.prepare_dataset import call_dataset
 from model import call_model_package
-from model.segmentation_unet import Segmentation_Head, Segmentation_Head_with_key
+from model.segmentation_unet import Segmentation_Head
 from model.channelwise import Channel_DeConv, Channel_DeConv_2
 from attention_store.normal_activator import passing_normalize_argument
 from torch import nn
