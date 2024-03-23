@@ -121,7 +121,6 @@ def main(args):
 
             device = accelerator.device
             loss_dict = {}
-            """
             with torch.set_grad_enabled(True):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
@@ -185,8 +184,6 @@ def main(args):
                 progress_bar.set_postfix(**loss_dict)
             if global_step >= args.max_train_steps:
                 break
-            """
-            break
         # ----------------------------------------------------------------------------------------------------------- #
         accelerator.wait_for_everyone()
         if is_main_process:
