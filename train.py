@@ -313,7 +313,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--aggregation_model_b", action='store_true')
     parser.add_argument("--aggregation_model_c", action='store_true')
-    parser.add_argument("--Segmentation_Head_c_with_binary", action='store_true')
+    parser.add_argument("--segment_with_binary", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     # step 5. optimizer
     parser.add_argument("--optimizer_type", type=str, default="AdamW",
