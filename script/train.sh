@@ -1,15 +1,15 @@
 # !/bin/bash
 #
-port_number=58898
+port_number=58899
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="12_segmentation_model_b_crossentropy_focal_loss_data_sy_layer_norm_nonlinearity_dice_loss"
+file_name="12_segmentation_model_bc_crossentropy_focal_loss_data_sy_layer_norm_nonlinearity_dice_loss"
 #--use_position_embedder \
 #--aggregation_model_b
-accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
+accelerate launch --config_file ../../../gpu_config/gpu_0_1_config \
  --main_process_port $port_number ../train.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --train_unet --train_text_encoder --start_epoch 0 --max_train_epochs 200 \
@@ -25,4 +25,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --n_classes 3 \
  --mask_res 256 --cross_entropy_focal_loss_both \
  --use_nonlinearity \
- --do_dice_loss --aggregation_model_b
+ --do_dice_loss --aggregation_model_c
