@@ -52,9 +52,9 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
             y_true = gt_flat.squeeze()
             y_true_list.append(y_true)
         y_pred = torch.cat(y_pred_list)
-        y_pred = F.one_hot(y_pred, num_classes=class_num)
-        y_true = torch.cat(y_true_list).long()
-        # [2] make confusino engine
+        y_pred = F.one_hot(y_pred, num_classes=class_num) # [pixel_num, C]
+        y_true = torch.cat(y_true_list).long()            # [pixel_num]
+        # [2] make confusion engine
         default_evaluator = Engine(eval_step)
         cm = ConfusionMatrix(num_classes=class_num)
         cm.attach(default_evaluator, 'confusion_matrix')

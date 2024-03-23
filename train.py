@@ -212,11 +212,11 @@ def main(args):
 
         if args.check_training :
             print(f'test with training data')
-            IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, train_dataloader, accelerator.device,
+            IOU_dict = evaluation_check(segmentation_head, train_dataloader, accelerator.device,
                                                           text_encoder, unet, vae, controller, weight_dtype,
                                                           position_embedder, args)
         else :
-            IOU_dict, pred, dice_coeff = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
+            IOU_dict = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
                                                           text_encoder, unet, vae, controller, weight_dtype,
                                                           position_embedder, args)
         print(f'IOU_dict = {IOU_dict}')
@@ -224,9 +224,13 @@ def main(args):
         if is_main_process:
             score_save_dir = os.path.join(args.output_dir, 'score.txt')
             with open(score_save_dir, 'a') as f:
+                dices = []
                 f.write(f' epoch = {epoch + 1} | ')
                 for k in IOU_dict:
-                    f.write(f'class {k} = {IOU_dict[k]} ')
+                    dice = float(IOU_dict[k])
+                    f.write(f'class {k} = {dice} ')
+                    dices.append(dice)
+                dice_coeff = sum(dices) / len(dices)
                 f.write(f'| dice_coeff = {dice_coeff}')
                 f.write(f'\n')
     accelerator.end_training()
