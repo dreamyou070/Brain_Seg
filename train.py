@@ -7,7 +7,7 @@ import os
 from attention_store import AttentionStore
 from data import call_dataset
 from model import call_model_package
-from model.segmentation_unet import Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c
+from model.segmentation_unet import Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c, Segmentation_Head_c_with_binary
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
@@ -54,6 +54,9 @@ def main(args):
         segmentation_head = Segmentation_Head_b(n_classes=args.n_classes, mask_res = args.mask_res)
     if args.aggregation_model_c :
         segmentation_head = Segmentation_Head_c(n_classes=args.n_classes, mask_res = args.mask_res)
+    if args.Segmentation_Head_c_with_binary :
+        segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,
+                                                            mask_res = args.mask_res)
 
 
     print(f'\n step 5. optimizer')
@@ -144,13 +147,28 @@ def main(args):
                 res = int(query.shape[1] ** 0.5)
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
-            masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
+
+            if args.Segmentation_Head_c_with_binary:
+                binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out)
+            else :
+                masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
+
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous() # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous()
 
             # [5.1.1] Multiclassification Loss
             loss = multiclass_criterion(masks_pred_, gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['multi_class_loss'] = loss.item()
+
+            if args.Segmentation_Head_c_with_binary:
+                binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()              # 1,128,128,2
+                binary_pred_ = binary_pred_.view(-1, masks_pred_.shape[-1]).contiguous() # pixel_num, 2
+                binary_gt_flat = torch.where(gt_flat != 0, 1)
+                binary_loss = multiclass_criterion(binary_pred_,
+                                                   binary_gt_flat.squeeze().to(torch.long))
+                loss_dict['binary_loss'] = binary_loss.item()
+                loss += binary_loss
+
             if args.cross_entropy_focal_loss_both:
                 loss_focal = multiclass_criterion_focal(masks_pred_, gt_flat.squeeze().to(torch.long))
                 loss += loss_focal
@@ -283,6 +301,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--aggregation_model_b", action='store_true')
     parser.add_argument("--aggregation_model_c", action='store_true')
+    parser.add_argument("--Segmentation_Head_c_with_binary", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     # step 5. optimizer
     parser.add_argument("--optimizer_type", type=str, default="AdamW",

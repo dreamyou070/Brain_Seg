@@ -188,11 +188,57 @@ class Segmentation_Head_c(nn.Module):
             x_in = x5_out
         logits = self.outc(x_in)  # 1,3,256,256
         return logits
+
+class Segmentation_Head_c_with_binary(nn.Module):
+
+    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128):
+        super(Segmentation_Head_c_with_binary, self).__init__()
+
+        self.n_classes = n_classes
+        self.mask_res = mask_res
+        self.bilinear = bilinear
+        factor = 2 if bilinear else 1
+        self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
+        self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
+        self.up3 = (Up(640, 320 // factor, bilinear, use_batchnorm))
+        self.up4 = (Up_conv(in_channels = 640,
+                            out_channels = 320,
+                            kernel_size=2))
+        if self.mask_res == 256 :
+            self.up5 = (Up_conv(in_channels = 320,
+                                out_channels = 320,
+                                kernel_size=2)) # 1,320,256,256
+        self.binary_up = Up_conv(in_channels = 320,
+                                out_channels = 160,
+                                kernel_size=1)
+        self.segment_up = Up_conv(in_channels = 320,
+                                out_channels = 160,
+                                kernel_size=1)
+        self.outc_b = (OutConv(160, 2))
+        self.outc_s = (OutConv(320, n_classes))
+
+    def forward(self, x16_out, x32_out, x64_out):
+
+        x1_out = self.up1(x16_out, x32_out)     # 1,640,32,32
+        x2_out = self.up2(x32_out, x64_out)     # 1,320,64,64
+        x3_out = self.up3(x1_out, x2_out)       # 1,320,64,64
+        x = torch.cat([x3_out, x64_out], dim=1) # 1,640,64,64
+        x4_out = self.up4(x)                    # 1,320,128,128
+        x_in = x4_out
+        if self.mask_res == 256 :
+            x5_out = self.up5(x4_out)            # 1,320,256,256
+            x_in = x5_out
+        x_out_b = self.binary_up(x_in)
+        binary_logits = self.outc_b(x_out_b)     # 1,2,256,256
+        x_out_s = self.segment_up(x_in)
+        seg_in = torch.cat([x_out_b, x_out_s], dim=1)
+        segment_logits = self.outc_s(seg_in)
+        return binary_logits, segment_logits
+
 """
 x16_out = torch.randn(1, 1280, 16, 16)
 x32_out = torch.randn(1, 640, 32, 32)
 x64_out = torch.randn(1, 320, 64, 64)
-model = Segmentation_Head_c(3)
-logits = model(x16_out, x32_out, x64_out)
-print(logits.shape) # torch.Size([1, 3, 256, 256])
+model = Segmentation_Head_c_with_binary(3,mask_res =  256)
+model(x16_out, x32_out, x64_out)
 """
