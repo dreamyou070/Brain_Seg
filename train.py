@@ -342,6 +342,7 @@ if __name__ == "__main__":
     parser.add_argument("--cross_entropy_focal_loss_both", action='store_true')
 
     parser.add_argument("--check_training", action='store_true')
+    parser.add_argument("--do_dice_loss", action='store_true')
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
                         help="format to save the model (default is .safetensors)", )
