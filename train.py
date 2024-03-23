@@ -87,10 +87,10 @@ def main(args):
     if args.use_focal_loss :
         multiclass_criterion = MulticlassLoss(focal_loss=True)
     elif args.cross_entropy_focal_loss_both :
-        multiclass_criterion = MulticlassLoss(focal_loss=True)
-        multiclass_criterion_focal = MulticlassLoss(focal_loss=False)
+        multiclass_criterion = nn.CrossEntropyLoss()
+        multiclass_criterion_focal = MulticlassLoss(focal_loss=True)
     else :
-        multiclass_criterion = MulticlassLoss(focal_loss=False)
+        multiclass_criterion = nn.CrossEntropyLoss()
 
 
     print(f'\n step 8. model to device')
