@@ -43,8 +43,13 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 res = int(query.shape[1] ** 0.5)
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
+            if 8 in q_dict.keys():
+                x8_out = q_dict[8]
+
             if args.segment_with_binary :
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out)
+            elif args.with_4_layers :
+                masks_pred = segmentation_head(x8_out, x16_out, x32_out, x64_out)
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
             #######################################################################################################################
