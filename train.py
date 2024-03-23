@@ -206,19 +206,16 @@ def main(args):
                        save_dtype=save_dtype)
         # ----------------------------------------------------------------------------------------------------------- #
         # [7] evaluate
-
+        check_loader = test_dataloader
         if args.check_training :
+            check_loader = train_dataloader
             print(f'test with training data')
-            IOU_dict = evaluation_check(segmentation_head, train_dataloader, accelerator.device,
-                                                          text_encoder, unet, vae, controller, weight_dtype,
-                                                          position_embedder, args)
-        else :
-            IOU_dict = evaluation_check(segmentation_head, test_dataloader, accelerator.device,
-                                                          text_encoder, unet, vae, controller, weight_dtype,
-                                                          position_embedder, args)
-        print(f'IOU_dict = {IOU_dict}')
+        IOU_dict, confusion_matrix = evaluation_check(segmentation_head, check_loader, accelerator.device,
+                                                      text_encoder, unet, vae, controller, weight_dtype, position_embedder, args)
         # saving
         if is_main_process:
+            print(f'  - precision dictionary = {IOU_dict}')
+            print(f'  - confusion_matrix = {confusion_matrix}')
             score_save_dir = os.path.join(args.output_dir, 'score.txt')
             with open(score_save_dir, 'a') as f:
                 dices = []

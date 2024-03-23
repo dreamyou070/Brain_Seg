@@ -69,4 +69,4 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
             dice_coeff = 2 * confusion_matrix[actual_idx, actual_idx] / (total_actual_num + total_predict_num + eps)
             IOU_dict[actual_idx] = round(dice_coeff.item(), 3)
     segmentation_head.train()
-    return IOU_dict
+    return IOU_dict, confusion_matrix
