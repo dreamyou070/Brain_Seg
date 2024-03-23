@@ -117,7 +117,6 @@ class Segmentation_Head_a(nn.Module):
         logits = self.outc(x_in)  # 1,4, 128,128
         return logits
 
-
 class Segmentation_Head_a_with_binary(nn.Module):
 
     def __init__(self,
@@ -164,7 +163,6 @@ class Segmentation_Head_a_with_binary(nn.Module):
         seg_in = torch.cat([x_out_b, x_out_s], dim=1)
         segment_logits = self.outc_s(seg_in)
         return binary_logits, segment_logits
-
 
 class Segmentation_Head_b(nn.Module):
 

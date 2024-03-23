@@ -52,19 +52,29 @@ def main(args):
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
 
     if args.segment_with_binary :
-        segmentation_head = Segmentation_Head_a_with_binary(n_classes=args.n_classes,mask_res=args.mask_res)
+        segmentation_head = Segmentation_Head_a_with_binary(n_classes=args.n_classes,
+                                                            use_batchnorm=args.use_batchnorm,
+                                                            mask_res=args.mask_res)
         if args.aggregation_model_b:
-            segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,mask_res=args.mask_res)
+            segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
+                                                                use_batchnorm=args.use_batchnorm,
+                                                                mask_res=args.mask_res)
         if args.aggregation_model_c:
-            segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,mask_res=args.mask_res)
+            segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,
+                                                                use_batchnorm=args.use_batchnorm,
+                                                                mask_res=args.mask_res)
     else :
-        segmentation_head = Segmentation_Head_a(n_classes=args.n_classes, mask_res = args.mask_res)
+        segmentation_head = Segmentation_Head_a(n_classes=args.n_classes,
+                                                use_batchnorm=args.use_batchnorm,
+                                                mask_res = args.mask_res)
         if args.aggregation_model_b :
-            segmentation_head = Segmentation_Head_b(n_classes=args.n_classes, mask_res = args.mask_res)
+            segmentation_head = Segmentation_Head_b(n_classes=args.n_classes,
+                                                    use_batchnorm=args.use_batchnorm,
+                                                    mask_res = args.mask_res)
         if args.aggregation_model_c :
-            segmentation_head = Segmentation_Head_c(n_classes=args.n_classes, mask_res = args.mask_res)
-
-
+            segmentation_head = Segmentation_Head_c(n_classes=args.n_classes,
+                                                    use_batchnorm=args.use_batchnorm,
+                                                    mask_res = args.mask_res)
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -85,7 +95,7 @@ def main(args):
         multiclass_criterion_focal = MulticlassLoss(focal_loss=True)
     else :
         multiclass_criterion = nn.CrossEntropyLoss()
-
+    bce_loss = nn.BCELoss()
 
     print(f'\n step 8. model to device')
     segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = \
@@ -137,8 +147,6 @@ def main(args):
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
             gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,3,256,256
-            gt = gt.permute(0, 2, 3, 1).contiguous()     # . view(-1, gt.shape[-1]).contiguous()   # 1,256,256,3
-            gt = gt.view(-1, gt.shape[-1]).contiguous()  # gt = [pixel_num, class_num ]
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
@@ -151,25 +159,25 @@ def main(args):
                 res = int(query.shape[1] ** 0.5)
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
-
             if args.segment_with_binary :
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out)
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
 
-            masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous() # 1,128,128,4
-            masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous()
+            masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous()              # 1,128,128,4
+            masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous() # pix_nuum, class_num
 
             # [5.1.1] Multiclassification Loss
-            loss = multiclass_criterion(masks_pred_, gt_flat.squeeze().to(torch.long))  # 128*128
+            loss = multiclass_criterion(masks_pred_,                       # pix_num, class_num
+                                        gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['multi_class_loss'] = loss.item()
 
             if args.segment_with_binary :
                 binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()               # 1,256,256,2
                 binary_pred_ = binary_pred_.view(-1, binary_pred_.shape[-1]).contiguous() # 256*256, 2
-                binary_gt_flat = torch.where(gt_flat != 0, 1, 0).long()
-                binary_loss = multiclass_criterion(binary_pred_,
-                                                   binary_gt_flat.squeeze().to(torch.long))
+                binary_gt_flat = torch.where(gt_flat != 0, 1, 0).long()                   # 256*256
+                binary_gt_flat = torch.nn.functional.one_hot(binary_gt_flat.to(torch.int64), num_classes=2)
+                binary_loss = bce_loss(binary_pred_, binary_gt_flat)
                 loss_dict['binary_loss'] = binary_loss.item()
                 loss += binary_loss
 
@@ -309,6 +317,7 @@ if __name__ == "__main__":
     parser.add_argument("--aggregation_model_b", action='store_true')
     parser.add_argument("--aggregation_model_c", action='store_true')
     parser.add_argument("--segment_with_binary", action='store_true')
+    parser.add_argument("--use_batchnorm", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     # step 5. optimizer
     parser.add_argument("--optimizer_type", type=str, default="AdamW",
@@ -344,7 +353,6 @@ if __name__ == "__main__":
     # [loss]
     parser.add_argument("--use_focal_loss", action='store_true')
     parser.add_argument("--cross_entropy_focal_loss_both", action='store_true')
-
     parser.add_argument("--check_training", action='store_true')
     parser.add_argument("--do_dice_loss", action='store_true')
     # [saving]
