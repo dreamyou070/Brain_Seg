@@ -7,7 +7,8 @@ import os
 from attention_store import AttentionStore
 from data import call_dataset
 from model import call_model_package
-from model.segmentation_unet import Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c, Segmentation_Head_c_with_binary
+from model.segmentation_unet import Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c, \
+    Segmentation_Head_a_with_binary, Segmentation_Head_b_with_binary, Segmentation_Head_c_with_binary
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
@@ -49,14 +50,23 @@ def main(args):
     print(f'\n step 4. model')
     weight_dtype, save_dtype = prepare_dtype(args)
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
-    segmentation_head = Segmentation_Head_a(n_classes=args.n_classes, mask_res = args.mask_res)
-    if args.aggregation_model_b :
-        segmentation_head = Segmentation_Head_b(n_classes=args.n_classes, mask_res = args.mask_res)
-    if args.aggregation_model_c :
-        segmentation_head = Segmentation_Head_c(n_classes=args.n_classes, mask_res = args.mask_res)
-    if args.Segmentation_Head_c_with_binary :
-        segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,
-                                                            mask_res = args.mask_res)
+
+    if args.segment_with_binary :
+        segmentation_head = Segmentation_Head_a_with_binary(n_classes=args.n_classes,
+                                                            mask_res=args.mask_res)
+        if args.aggregation_model_b:
+            segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
+                                                                mask_res=args.mask_res)
+        if args.aggregation_model_c:
+            segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,
+                                                                mask_res=args.mask_res)
+    else :
+        segmentation_head = Segmentation_Head_a(n_classes=args.n_classes, mask_res = args.mask_res)
+        if args.aggregation_model_b :
+            segmentation_head = Segmentation_Head_b(n_classes=args.n_classes, mask_res = args.mask_res)
+        if args.aggregation_model_c :
+            segmentation_head = Segmentation_Head_c(n_classes=args.n_classes, mask_res = args.mask_res)
+
 
 
     print(f'\n step 5. optimizer')
@@ -160,11 +170,10 @@ def main(args):
             loss = multiclass_criterion(masks_pred_, gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['multi_class_loss'] = loss.item()
 
-            if args.Segmentation_Head_c_with_binary:
+            if args.segment_with_binary :
                 binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()               # 1,256,256,2
                 binary_pred_ = binary_pred_.view(-1, binary_pred_.shape[-1]).contiguous() # 256*256, 2
                 binary_gt_flat = torch.where(gt_flat != 0, 1, 0).long()
-
                 binary_loss = multiclass_criterion(binary_pred_,
                                                    binary_gt_flat.squeeze().to(torch.long))
                 loss_dict['binary_loss'] = binary_loss.item()
