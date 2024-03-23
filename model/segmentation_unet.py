@@ -62,14 +62,23 @@ class Up(nn.Module):
 class Up_conv(nn.Module):
     """Upscaling then double conv"""
 
-    def __init__(self, in_channels, out_channels, kernel_size=2):
+    def __init__(self, in_channels, out_channels, kernel_size=2, res=128, use_nonlinearity = False):
         super().__init__()
         # if bilinear, use the normal convolutions to reduce the number of channels
         self.up = nn.ConvTranspose2d(in_channels = in_channels,
                                      out_channels = out_channels,
                                      kernel_size=kernel_size, stride=kernel_size)
+
+        self.use_nonlinearity = use_nonlinearity
+        if self.use_nonlinearity :
+            self.layernorm = nn.LayerNorm([out_channels,res, res])
+            self.nonlinear = nn.ReLU(inplace=True)
+        # Layernorm 와 Relu 는 왜 쓰는 걸까?
     def forward(self, x1):
         x = self.up(x1)
+        if self.use_nonlinearity :
+            x = self.layernorm(x)
+            x = self.nonlinear(x)
         return x
 
 
@@ -87,7 +96,8 @@ class Segmentation_Head_a(nn.Module):
                  n_classes,
                  bilinear=False,
                  use_batchnorm=True,
-                 mask_res = 128):
+                 mask_res = 128,
+                 use_nonlinearity = False):
         super(Segmentation_Head_a, self).__init__()
 
         self.n_classes = n_classes
@@ -96,13 +106,17 @@ class Segmentation_Head_a(nn.Module):
         factor = 2 if bilinear else 1
         self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
         self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up3 = (Up_conv(in_channels = 320,
-                            out_channels = 160,
-                            kernel_size=2)) # 64 -> 128 , channel 320 -> 160
+        self.up3 = Up_conv(in_channels = 320,
+                           out_channels = 160,
+                           kernel_size=2,
+                           res = 128,
+                           use_nonlinearity = use_nonlinearity) # 64 -> 128 , channel 320 -> 160
         if self.mask_res == 256 :
-            self.up4 = (Up_conv(in_channels = 160,
-                                out_channels = 160,
-                                kernel_size=2))  # 128 -> 256
+            self.up4 = Up_conv(in_channels = 160,
+                               out_channels = 160,
+                               kernel_size=2,
+                               res=256,
+                               use_nonlinearity = use_nonlinearity)  # 128 -> 256
         self.outc = (OutConv(160, n_classes))
 
     def forward(self, x16_out, x32_out, x64_out):
@@ -123,7 +137,9 @@ class Segmentation_Head_a_with_binary(nn.Module):
                  n_classes,
                  bilinear=False,
                  use_batchnorm=True,
-                 mask_res = 128):
+                 mask_res = 128,
+                 use_nonlinearity = False
+                 ):
         super(Segmentation_Head_a_with_binary, self).__init__()
 
         self.n_classes = n_classes
@@ -132,21 +148,31 @@ class Segmentation_Head_a_with_binary(nn.Module):
         factor = 2 if bilinear else 1
         self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
         self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up3 = (Up_conv(in_channels = 320,
-                            out_channels = 160,
-                            kernel_size=2)) # 64 -> 128 , channel 320 -> 160
+        self.up3 = Up_conv(in_channels = 320,
+                           out_channels = 160,
+                           res = 128,
+                           kernel_size=2,
+                           use_nonlinearity = use_nonlinearity)
+        global_res = 128
         if self.mask_res == 256 :
-            self.up4 = (Up_conv(in_channels = 160,
-                                out_channels = 160,
-                                kernel_size=2))  # 128 -> 256
+            self.up4 = Up_conv(in_channels = 160,
+                               out_channels = 160,
+                               res = 256,
+                               kernel_size=2,
+                               use_nonlinearity = use_nonlinearity)
+            global_res = 256
         self.binary_up = Up_conv(in_channels=160,
                                  out_channels=80,
-                                 kernel_size=1)
+                                 res=global_res,
+                                 kernel_size=1,
+                                 use_nonlinearity=use_nonlinearity)
         self.segment_up = Up_conv(in_channels=160,
                                   out_channels=80,
-                                  kernel_size=1)
-        self.outc_b = (OutConv(80, 2))
-        self.outc_s = (OutConv(160, n_classes))
+                                  res=global_res,
+                                  kernel_size=1,
+                                  use_nonlinearity=use_nonlinearity)
+        self.outc_b = OutConv(80, 2)
+        self.outc_s = OutConv(160, n_classes)
 
     def forward(self, x16_out, x32_out, x64_out):
 
@@ -166,7 +192,7 @@ class Segmentation_Head_a_with_binary(nn.Module):
 
 class Segmentation_Head_b(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128):
+    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128, use_nonlinearity = False):
         super(Segmentation_Head_b, self).__init__()
 
         self.n_classes = n_classes
@@ -176,14 +202,18 @@ class Segmentation_Head_b(nn.Module):
         self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
         self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
         self.up3 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up4 = (Up_conv(in_channels = 320,
-                            out_channels=160,
-                            kernel_size=2))
+        self.up4 = Up_conv(in_channels = 320,
+                           out_channels=160,
+                           kernel_size=2,
+                           res = 128,
+                           use_nonlinearity = use_nonlinearity)
         if self.mask_res == 256 :
-            self.up5 = (Up_conv(in_channels = 160,
-                                out_channels = 160,
-                                kernel_size=2))
-        self.outc = (OutConv(160, n_classes))
+            self.up5 = Up_conv(in_channels = 160,
+                               out_channels = 160,
+                               kernel_size=2,
+                               res = 256,
+                               use_nonlinearity = use_nonlinearity)
+        self.outc = OutConv(160, n_classes)
 
     def forward(self, x16_out, x32_out, x64_out):
 
@@ -200,7 +230,7 @@ class Segmentation_Head_b(nn.Module):
 
 class Segmentation_Head_b_with_binary(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128):
+    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128, use_nonlinearity = False):
         super(Segmentation_Head_b_with_binary, self).__init__()
 
         self.n_classes = n_classes
@@ -210,21 +240,31 @@ class Segmentation_Head_b_with_binary(nn.Module):
         self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
         self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
         self.up3 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up4 = (Up_conv(in_channels = 320,
+        self.up4 = Up_conv(in_channels = 320,
                             out_channels=160,
-                            kernel_size=2))
+                            kernel_size=2,
+                            res = 128,
+                            use_nonlinearity = use_nonlinearity)
+        global_res = 128
         if self.mask_res == 256 :
-            self.up5 = (Up_conv(in_channels = 160,
+            self.up5 = Up_conv(in_channels = 160,
                                 out_channels = 160,
-                                kernel_size=2))
+                                kernel_size=2,
+                                res = 256,
+                                use_nonlinearity = use_nonlinearity)
+            global_res = 256
         self.binary_up = Up_conv(in_channels=160,
                                  out_channels=160,
-                                 kernel_size=1)
+                                 kernel_size=1,
+                                 res = global_res,
+                                 use_nonlinearity = use_nonlinearity)
         self.segment_up = Up_conv(in_channels=160,
                                   out_channels=160,
-                                  kernel_size=1)
-        self.outc_b = (OutConv(160, 2))
-        self.outc_s = (OutConv(320, n_classes))
+                                  kernel_size=1,
+                                  res = global_res,
+                                  use_nonlinearity = use_nonlinearity)
+        self.outc_b = OutConv(160, 2)
+        self.outc_s = OutConv(320, n_classes)
 
     def forward(self, x16_out, x32_out, x64_out):
 
@@ -245,24 +285,28 @@ class Segmentation_Head_b_with_binary(nn.Module):
 
 class Segmentation_Head_c(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128):
+    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128, use_nonlinearity = False):
         super(Segmentation_Head_c, self).__init__()
 
         self.n_classes = n_classes
         self.mask_res = mask_res
         self.bilinear = bilinear
         factor = 2 if bilinear else 1
-        self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
-        self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up3 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up4 = (Up_conv(in_channels = 640,
+        self.up1 = Up(1280, 640 // factor, bilinear, use_batchnorm)
+        self.up2 = Up(640, 320 // factor, bilinear, use_batchnorm)
+        self.up3 = Up(640, 320 // factor, bilinear, use_batchnorm)
+        self.up4 = Up_conv(in_channels = 640,
                             out_channels = 320,
-                            kernel_size=2))
+                            kernel_size=2,
+                            res = 128,
+                            use_nonlinearity = use_nonlinearity)
         if self.mask_res == 256 :
-            self.up5 = (Up_conv(in_channels = 320,
+            self.up5 = Up_conv(in_channels = 320,
                                 out_channels = 320,
-                                kernel_size=2))
-        self.outc = (OutConv(320, n_classes))
+                                kernel_size=2,
+                                res = 256,
+                                use_nonlinearity = use_nonlinearity)
+        self.outc = OutConv(320, n_classes)
 
     def forward(self, x16_out, x32_out, x64_out):
 
@@ -280,29 +324,39 @@ class Segmentation_Head_c(nn.Module):
 
 class Segmentation_Head_c_with_binary(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128):
+    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128, use_nonlinearity = False):
         super(Segmentation_Head_c_with_binary, self).__init__()
 
         self.n_classes = n_classes
         self.mask_res = mask_res
         self.bilinear = bilinear
         factor = 2 if bilinear else 1
-        self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
-        self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up3 = (Up(640, 320 // factor, bilinear, use_batchnorm))
-        self.up4 = (Up_conv(in_channels = 640,
+        self.up1 = Up(1280, 640 // factor, bilinear, use_batchnorm)
+        self.up2 = Up(640, 320 // factor, bilinear, use_batchnorm)
+        self.up3 = Up(640, 320 // factor, bilinear, use_batchnorm)
+        self.up4 = Up_conv(in_channels = 640,
                             out_channels = 320,
-                            kernel_size=2))
+                            kernel_size=2,
+                            res = 128,
+                            use_nonlinearity = use_nonlinearity)
+        global_res = 128
         if self.mask_res == 256 :
-            self.up5 = (Up_conv(in_channels = 320,
-                                out_channels = 320,
-                                kernel_size=2)) # 1,320,256,256
+            self.up5 = Up_conv(in_channels = 320,
+                               out_channels = 320,
+                               kernel_size=2,
+                               res = 256,
+                               use_nonlinearity = use_nonlinearity) # 1,320,256,256
+            global_res = 256
         self.binary_up = Up_conv(in_channels = 320,
                                 out_channels = 160,
-                                kernel_size=1)
+                                kernel_size=1,
+                                 res = global_res,
+                                 use_nonlinearity = use_nonlinearity)
         self.segment_up = Up_conv(in_channels = 320,
                                 out_channels = 160,
-                                kernel_size=1)
+                                kernel_size=1,
+                                  res = global_res,
+                                 use_nonlinearity = use_nonlinearity)
         self.outc_b = (OutConv(160, 2))
         self.outc_s = (OutConv(320, n_classes))
 
@@ -324,10 +378,12 @@ class Segmentation_Head_c_with_binary(nn.Module):
         segment_logits = self.outc_s(seg_in)
         return binary_logits, segment_logits
 
-"""
+
 x16_out = torch.randn(1, 1280, 16, 16)
 x32_out = torch.randn(1, 640, 32, 32)
 x64_out = torch.randn(1, 320, 64, 64)
-model = Segmentation_Head_a_with_binary(3, mask_res =  256)
+model = Segmentation_Head_c_with_binary(3,
+                            mask_res =  256,
+                            use_batchnorm=False,
+                            use_nonlinearity=True)
 model(x16_out, x32_out, x64_out)
-"""

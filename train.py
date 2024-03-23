@@ -54,27 +54,33 @@ def main(args):
     if args.segment_with_binary :
         segmentation_head = Segmentation_Head_a_with_binary(n_classes=args.n_classes,
                                                             use_batchnorm=args.use_batchnorm,
-                                                            mask_res=args.mask_res)
+                                                            mask_res=args.mask_res,
+                                                            use_nonlinearity=args.use_nonlinearity)
         if args.aggregation_model_b:
             segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
                                                                 use_batchnorm=args.use_batchnorm,
-                                                                mask_res=args.mask_res)
+                                                                mask_res=args.mask_res,
+                                                                use_nonlinearity=args.use_nonlinearity)
         if args.aggregation_model_c:
             segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,
                                                                 use_batchnorm=args.use_batchnorm,
-                                                                mask_res=args.mask_res)
+                                                                mask_res=args.mask_res,
+                                                                use_nonlinearity=args.use_nonlinearity)
     else :
         segmentation_head = Segmentation_Head_a(n_classes=args.n_classes,
                                                 use_batchnorm=args.use_batchnorm,
-                                                mask_res = args.mask_res)
+                                                mask_res = args.mask_res,
+                                                use_nonlinearity=args.use_nonlinearity)
         if args.aggregation_model_b :
             segmentation_head = Segmentation_Head_b(n_classes=args.n_classes,
                                                     use_batchnorm=args.use_batchnorm,
-                                                    mask_res = args.mask_res)
+                                                    mask_res = args.mask_res,
+                                                    use_nonlinearity=args.use_nonlinearity)
         if args.aggregation_model_c :
             segmentation_head = Segmentation_Head_c(n_classes=args.n_classes,
                                                     use_batchnorm=args.use_batchnorm,
-                                                    mask_res = args.mask_res)
+                                                    mask_res = args.mask_res,
+                                                    use_nonlinearity=args.use_nonlinearity)
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -318,6 +324,7 @@ if __name__ == "__main__":
     parser.add_argument("--aggregation_model_c", action='store_true')
     parser.add_argument("--segment_with_binary", action='store_true')
     parser.add_argument("--use_batchnorm", action='store_true')
+    parser.add_argument("--use_nonlinearity", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     # step 5. optimizer
     parser.add_argument("--optimizer_type", type=str, default="AdamW",
