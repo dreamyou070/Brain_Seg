@@ -52,14 +52,11 @@ def main(args):
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
 
     if args.segment_with_binary :
-        segmentation_head = Segmentation_Head_a_with_binary(n_classes=args.n_classes,
-                                                            mask_res=args.mask_res)
+        segmentation_head = Segmentation_Head_a_with_binary(n_classes=args.n_classes,mask_res=args.mask_res)
         if args.aggregation_model_b:
-            segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
-                                                                mask_res=args.mask_res)
+            segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,mask_res=args.mask_res)
         if args.aggregation_model_c:
-            segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,
-                                                                mask_res=args.mask_res)
+            segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,mask_res=args.mask_res)
     else :
         segmentation_head = Segmentation_Head_a(n_classes=args.n_classes, mask_res = args.mask_res)
         if args.aggregation_model_b :
@@ -73,11 +70,8 @@ def main(args):
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
     trainable_params = network.prepare_optimizer_params(args.text_encoder_lr, args.unet_lr, args.learning_rate)
     if args.use_position_embedder:
-        trainable_params.append({"params": position_embedder.parameters(),
-                                 "lr": args.learning_rate})
-    trainable_params.append({"params": segmentation_head.parameters(),
-                             "lr": args.learning_rate})
-
+        trainable_params.append({"params": position_embedder.parameters(), "lr": args.learning_rate})
+    trainable_params.append({"params": segmentation_head.parameters(), "lr": args.learning_rate})
     optimizer_name, optimizer_args, optimizer = get_optimizer(args, trainable_params)
 
     print(f'\n step 6. lr')
@@ -181,6 +175,7 @@ def main(args):
 
 
             if args.cross_entropy_focal_loss_both:
+                """ focal loss """
                 loss_focal = multiclass_criterion_focal(masks_pred_, gt_flat.squeeze().to(torch.long))
                 loss += loss_focal
                 loss_dict['focal_loss'] = loss_focal.item()
