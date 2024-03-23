@@ -1,14 +1,14 @@
 # !/bin/bash
 #
-port_number=50643
+port_number=50645
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="1_segmentation_model_c"
-
-accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
+file_name="test"
+#--use_position_embedder \
+accelerate launch --config_file ../../../gpu_config/gpu_0_config \
  --main_process_port $port_number ../train.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --train_unet --train_text_encoder --start_epoch 0 --max_train_epochs 100 \
@@ -22,8 +22,6 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --multiclassification_focal_loss \
- --use_position_embedder \
  --n_classes 3 \
  --do_attn_loss \
- --mask_res 256 \
- --aggregation_model_c
+ --mask_res 256

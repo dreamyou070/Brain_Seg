@@ -15,8 +15,14 @@ from utils.attention_control import passing_argument, register_attention_control
 from utils.accelerator_utils import prepare_accelerator
 from utils.optimizer import get_optimizer, get_scheduler_fix
 from utils.saving import save_model
-from utils.loss import FocalLoss, Multiclass_FocalLoss
+from utils.loss import MulticlassLoss
 from utils.evaluate import evaluation_check
+from torch.nn import functional as F
+from ignite.metrics.confusion_matrix import ConfusionMatrix
+from ignite.engine import *
+from ignite.metrics import *
+def eval_step(engine, batch):
+    return batch
 
 def main(args):
 
@@ -65,8 +71,10 @@ def main(args):
     lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
 
     print(f'\n step 7. loss function')
-    criterion = nn.CrossEntropyLoss()
-    loss_multi_focal = Multiclass_FocalLoss()
+    if args.use_focal_loss :
+        multiclass_criterion = MulticlassLoss(focal_loss=True)
+    else :
+        multiclass_criterion = MulticlassLoss(focal_loss=False)
 
     print(f'\n step 8. model to device')
     segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = \
@@ -117,8 +125,8 @@ def main(args):
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
             gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,3,256,256
-            gt = gt.permute(0, 2, 3, 1).contiguous()#.view(-1, gt.shape[-1]).contiguous()   # 1,256,256,3
-            gt = gt.view(-1, gt.shape[-1]).contiguous()
+            gt = gt.permute(0, 2, 3, 1).contiguous()     # . view(-1, gt.shape[-1]).contiguous()   # 1,256,256,3
+            gt = gt.view(-1, gt.shape[-1]).contiguous()  # gt = [pixel_num, class_num ]
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
@@ -135,17 +143,23 @@ def main(args):
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous() # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous()
 
-            # [5.1] Multiclassification Loss
-            loss = criterion(masks_pred_,  # 1,4,128,128
-                             gt_flat.squeeze().to(torch.long))  # 128*128
-            loss_dict['cross_entropy_loss'] = loss.item()
+            # [5.1.1] Multiclassification Loss
+            loss = multiclass_criterion(masks_pred_, gt_flat.squeeze().to(torch.long))  # 128*128
+            loss_dict['multi_class_loss'] = loss.item()
 
-            # [5.2] Focal Loss
-            focal_loss = loss_multi_focal(masks_pred_,  # N,C
-                                          gt_flat.squeeze().to(masks_pred.device))  # N
-            loss += focal_loss
-            loss_dict['focal_loss'] = focal_loss.item()
-            # [5.3] Dice Loss
+            # [5.1.2] Dice Loss
+            default_evaluator = Engine(eval_step)
+            cm = ConfusionMatrix(num_classes=args.n_classes)
+            metric = DiceCoefficient(cm, ignore_index=0)
+            metric.attach(default_evaluator, 'dice')
+            y_pred = torch.argmax(masks_pred, dim=1).flatten() # change to one_hot
+            y_pred = F.one_hot(y_pred, num_classes=args.n_classes)
+            dice_loss = 1 - default_evaluator.run([[y_pred,  # 256*256,
+                                                    gt_flat]]).metrics['dice']                  # pixel_num
+            dice_loss = dice_loss.mean()
+            loss += dice_loss
+
+            # [5.2] back prop
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
             if epoch == args.start_epoch:
@@ -252,6 +266,11 @@ if __name__ == "__main__":
     parser.add_argument("--n_classes", default=4, type=int)
     parser.add_argument("--kernel_size", type=int, default=2)
     parser.add_argument("--mask_res", type=int, default=128)
+    parser.add_argument("--position_embedder_weights", type=str, default=None)
+    parser.add_argument("--use_position_embedder", action='store_true')
+    parser.add_argument("--aggregation_model_b", action='store_true')
+    parser.add_argument("--aggregation_model_c", action='store_true')
+    parser.add_argument("--pretrained_segmentation_model", type=str)
     # step 5. optimizer
     parser.add_argument("--optimizer_type", type=str, default="AdamW",
               help="AdamW , AdamW8bit, PagedAdamW8bit, PagedAdamW32bit, Lion8bit, PagedLion8bit, Lion, SGDNesterov,"
@@ -262,6 +281,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm, 0 for no clipping")
     parser.add_argument("--optimizer_args", type=str, default=None, nargs="*",
                         help='additional arguments for optimizer (like "weight_decay=0.01 betas=0.9,0.999 ...") ', )
+    # [lr]
     parser.add_argument("--lr_scheduler_type", type=str, default="", help="custom scheduler module")
     parser.add_argument("--lr_scheduler_args", type=str, default=None, nargs="*",
                         help='additional arguments for scheduler (like "T_max=100")')
@@ -277,22 +297,17 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', type=float, default=1e-5)
     parser.add_argument('--train_unet', action='store_true')
     parser.add_argument('--train_text_encoder', action='store_true')
-    # step 10. training
-    parser.add_argument("--save_model_as", type=str, default="safetensors",
-               choices=[None, "ckpt", "pt", "safetensors"], help="format to save the model (default is .safetensors)",)
+    # [training]
     parser.add_argument("--start_epoch", type=int, default=0)
     parser.add_argument("--max_train_epochs", type=int, default=None, )
     parser.add_argument("--gradient_checkpointing", action="store_true", help="enable gradient checkpointing")
     parser.add_argument("--trg_layer_list", type=arg_as_list, default=[])
+    # [loss]
     parser.add_argument("--use_focal_loss", action='store_true')
-    parser.add_argument("--position_embedder_weights", type=str, default=None)
-    parser.add_argument("--multiclassification_focal_loss", action='store_true')
-    parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--check_training", action='store_true')
-    parser.add_argument("--pretrained_segmentation_model", type=str)
-    parser.add_argument("--do_attn_loss", action='store_true')
-    parser.add_argument("--aggregation_model_b", action='store_true')
-    parser.add_argument("--aggregation_model_c", action='store_true')
+    # [saving]
+    parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
+                        help="format to save the model (default is .safetensors)", )
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
