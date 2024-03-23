@@ -73,8 +73,12 @@ def main(args):
     print(f'\n step 7. loss function')
     if args.use_focal_loss :
         multiclass_criterion = MulticlassLoss(focal_loss=True)
+    elif args.cross_entropy_focal_loss_both :
+        multiclass_criterion = MulticlassLoss(focal_loss=True)
+        multiclass_criterion_focal = MulticlassLoss(focal_loss=False)
     else :
         multiclass_criterion = MulticlassLoss(focal_loss=False)
+
 
     print(f'\n step 8. model to device')
     segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = \
@@ -147,6 +151,10 @@ def main(args):
             # [5.1.1] Multiclassification Loss
             loss = multiclass_criterion(masks_pred_, gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['multi_class_loss'] = loss.item()
+            if args.cross_entropy_focal_loss_both:
+                loss_focal = multiclass_criterion_focal(masks_pred_, gt_flat.squeeze().to(torch.long))
+                loss += loss_focal
+                loss_dict['focal_loss'] = loss_focal.item()
 
             # [5.1.2] Dice Loss
             default_evaluator = Engine(eval_step)
@@ -161,6 +169,7 @@ def main(args):
                                                   ).metrics['dice']                  # pixel_num
             dice_loss = dice_loss.mean()
             loss += dice_loss
+            loss_dict['dice_loss'] = dice_loss.item()
 
             # [5.2] back prop
             loss = loss.to(weight_dtype)
@@ -308,6 +317,8 @@ if __name__ == "__main__":
     parser.add_argument("--trg_layer_list", type=arg_as_list, default=[])
     # [loss]
     parser.add_argument("--use_focal_loss", action='store_true')
+    parser.add_argument("--cross_entropy_focal_loss_both", action='store_true')
+
     parser.add_argument("--check_training", action='store_true')
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
