@@ -12,7 +12,7 @@ file_name="10_segmentation_model_a_crossentropy_focall_loss_data_sy_layer_norm"
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
- --train_unet --train_text_encoder --start_epoch 0 --max_train_epochs 100 \
+ --train_unet --train_text_encoder --start_epoch 0 --max_train_epochs 200 \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
  --data_path "/home/dreamyou070/MyData/anomaly_detection/medical/${obj_name}/${benchmark}" \
  --resize_shape 512 \
