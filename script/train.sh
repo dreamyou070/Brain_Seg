@@ -1,12 +1,12 @@
 # !/bin/bash
 #
-port_number=58805
+port_number=58804
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="7_segmentation_model_b_crossentropy_with_binary"
+file_name="7_segmentation_model_a_crossentropy_with_binary"
 #--use_position_embedder \
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train.py --log_with wandb \
@@ -23,5 +23,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --n_classes 3 \
  --mask_res 256 \
- --segment_with_binary \
- --aggregation_model_b
+ --segment_with_binary
