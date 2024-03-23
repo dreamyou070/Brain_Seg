@@ -161,14 +161,15 @@ def main(args):
             loss_dict['multi_class_loss'] = loss.item()
 
             if args.Segmentation_Head_c_with_binary:
-                binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()              # 1,128,128,2
-                binary_pred_ = binary_pred_.view(-1, binary_pred.shape[-1]).contiguous() # pixel_num, 2
+                binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()               # 1,256,256,2
+                binary_pred_ = binary_pred_.view(-1, binary_pred_.shape[-1]).contiguous() # 256*256, 2
                 binary_gt_flat = torch.where(gt_flat != 0, 1, 0).long()
 
                 binary_loss = multiclass_criterion(binary_pred_,
                                                    binary_gt_flat.squeeze().to(torch.long))
                 loss_dict['binary_loss'] = binary_loss.item()
                 loss += binary_loss
+
 
             if args.cross_entropy_focal_loss_both:
                 loss_focal = multiclass_criterion_focal(masks_pred_, gt_flat.squeeze().to(torch.long))
