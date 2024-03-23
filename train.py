@@ -152,10 +152,12 @@ def main(args):
             cm = ConfusionMatrix(num_classes=args.n_classes)
             metric = DiceCoefficient(cm, ignore_index=0)
             metric.attach(default_evaluator, 'dice')
+
             y_pred = torch.argmax(masks_pred, dim=1).flatten() # change to one_hot
             y_pred = F.one_hot(y_pred, num_classes=args.n_classes)
-            dice_loss = 1 - default_evaluator.run([[y_pred,  # 256*256,
-                                                    gt_flat]]).metrics['dice']                  # pixel_num
+            dice_loss = 1 - default_evaluator.run([[y_pred,   # [256*256,3
+                                                    gt_flat.squeeze()]] # [256*256]
+                                                  ).metrics['dice']                  # pixel_num
             dice_loss = dice_loss.mean()
             loss += dice_loss
 

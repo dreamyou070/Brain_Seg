@@ -1,4 +1,5 @@
 import numpy as np
+"""
 confusion_matrix = np.array([[148501218, 12432, 417966, 33333],
 [58165, 558565, 65221, 144774],
 [694283, 62328, 3115202, 55516],
@@ -17,3 +18,10 @@ for r_idx in range(real_axis) :
 values = np.array(values)
 print(values)
 print(f'\n classwise total sample = {total_nums}')
+"""
+import torch
+import torch.nn.functional as F
+masks_pred = torch.randn(1,3,256,256)
+y_pred = torch.argmax(masks_pred, dim=1).flatten() # change to one_hot
+y_pred = F.one_hot(y_pred, num_classes=3)
+print(y_pred.shape)
