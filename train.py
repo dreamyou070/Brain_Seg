@@ -176,20 +176,21 @@ def main(args):
                 loss += loss_focal
                 loss_dict['focal_loss'] = loss_focal.item()
 
-            # [5.1.2] Dice Loss
-            default_evaluator = Engine(eval_step)
-            cm = ConfusionMatrix(num_classes=args.n_classes)
-            metric = DiceCoefficient(cm, ignore_index=0)
-            metric.attach(default_evaluator, 'dice')
+            if args.do_dice_loss :
+                # [5.1.2] Dice Loss
+                default_evaluator = Engine(eval_step)
+                cm = ConfusionMatrix(num_classes=args.n_classes)
+                metric = DiceCoefficient(cm, ignore_index=0)
+                metric.attach(default_evaluator, 'dice')
 
-            y_pred = torch.argmax(masks_pred, dim=1).flatten() # change to one_hot
-            y_pred = F.one_hot(y_pred, num_classes=args.n_classes)
-            dice_loss = 1 - default_evaluator.run([[y_pred,   # [256*256,3
-                                                    gt_flat.squeeze().long()]] # [256*256]
-                                                  ).metrics['dice']                  # pixel_num
-            dice_loss = dice_loss.mean()
-            loss += dice_loss
-            loss_dict['dice_loss'] = dice_loss.item()
+                y_pred = torch.argmax(masks_pred, dim=1).flatten() # change to one_hot
+                y_pred = F.one_hot(y_pred, num_classes=args.n_classes)
+                dice_loss = 1 - default_evaluator.run([[y_pred,   # [256*256,3
+                                                        gt_flat.squeeze().long()]] # [256*256]
+                                                      ).metrics['dice']                  # pixel_num
+                dice_loss = dice_loss.mean()
+                loss += dice_loss
+                loss_dict['dice_loss'] = dice_loss.item()
 
             # [5.2] back prop
             loss = loss.to(weight_dtype)
