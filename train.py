@@ -7,7 +7,7 @@ import os
 from attention_store import AttentionStore
 from data import call_dataset
 from model import call_model_package
-from model.segmentation_unet import Segmentation_Head, Segmentation_Head_b, Segmentation_Head_c
+from model.segmentation_unet import Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
@@ -43,15 +43,11 @@ def main(args):
     print(f'\n step 4. model')
     weight_dtype, save_dtype = prepare_dtype(args)
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
-    segmentation_head = Segmentation_Head(n_classes=args.n_classes,
-                                          kernel_size = args.kernel_size,)
+    segmentation_head = Segmentation_Head_a(n_classes=args.n_classes, mask_res = args.mask_res)
     if args.aggregation_model_b :
-        segmentation_head = Segmentation_Head_b(n_classes=args.n_classes,
-                                                kernel_size=args.kernel_size, )
+        segmentation_head = Segmentation_Head_b(n_classes=args.n_classes, mask_res = args.mask_res)
     if args.aggregation_model_c :
-        segmentation_head = Segmentation_Head_c(n_classes=args.n_classes,
-                                                kernel_size=args.kernel_size, )
-
+        segmentation_head = Segmentation_Head_c(n_classes=args.n_classes, mask_res = args.mask_res)
 
 
     print(f'\n step 5. optimizer')
@@ -205,12 +201,14 @@ def main(args):
                                                           position_embedder, args)
         print(f'IOU_dict = {IOU_dict}')
         # saving
-        score_save_dir = os.path.join(args.output_dir, 'score.txt')
-        with open(score_save_dir, 'a') as f:
-            for k in IOU_dict:
-                f.write(f'class {k} = {IOU_dict[k]} ')
-            f.write(f'| dice_coeff = {dice_coeff}')
-            f.write(f'\n')
+        if is_main_process:
+            score_save_dir = os.path.join(args.output_dir, 'score.txt')
+            with open(score_save_dir, 'a') as f:
+                f.write(f' epoch = {epoch + 1} | ')
+                for k in IOU_dict:
+                    f.write(f'class {k} = {IOU_dict[k]} ')
+                f.write(f'| dice_coeff = {dice_coeff}')
+                f.write(f'\n')
     accelerator.end_training()
 
 
