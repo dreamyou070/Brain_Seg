@@ -132,4 +132,37 @@ class Segmentation_Head_b(nn.Module):
         logits = self.outc(x4_out)  # 1,3,256,256
         return logits
 
+class Segmentation_Head_c(nn.Module):
 
+    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True,
+                 kernel_size = 2):
+        super(Segmentation_Head_c, self).__init__()
+
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+        factor = 2 if bilinear else 1
+        self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
+        self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
+        self.up3 = (Up(640, 320 // factor, bilinear, use_batchnorm))
+        self.up4 = (Up_conv(640, kernel_size=2))
+        self.up5 = (Up_conv(320, kernel_size=2))
+        self.outc = (OutConv(160, n_classes))
+
+    def forward(self, x16_out, x32_out, x64_out):
+
+        x1_out = self.up1(x16_out, x32_out)     # 1,640,32,32
+        x2_out = self.up2(x32_out, x64_out)     # 1,320,64,64
+        x3_out = self.up3(x1_out, x2_out)       # 1,320,64,64
+        x = torch.cat([x3_out, x64_out], dim=1) # 1,640,64,64
+        x4_out = self.up4(x)                    # 1,320,128,128
+        x5_out = self.up5(x4_out)               # 1,160,256,256
+        logits = self.outc(x5_out)  # 1,3,256,256
+        return logits
+"""
+x16_out = torch.randn(1, 1280, 16, 16)
+x32_out = torch.randn(1, 640, 32, 32)
+x64_out = torch.randn(1, 320, 64, 64)
+model = Segmentation_Head_c(3)
+logits = model(x16_out, x32_out, x64_out)
+print(logits.shape) # torch.Size([1, 3, 256, 256])
+"""

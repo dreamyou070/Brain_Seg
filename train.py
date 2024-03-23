@@ -7,7 +7,7 @@ import os
 from attention_store import AttentionStore
 from data import call_dataset
 from model import call_model_package
-from model.segmentation_unet import Segmentation_Head, Segmentation_Head_b
+from model.segmentation_unet import Segmentation_Head, Segmentation_Head_b, Segmentation_Head_c
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
@@ -47,6 +47,9 @@ def main(args):
                                           kernel_size = args.kernel_size,)
     if args.aggregation_model_b :
         segmentation_head = Segmentation_Head_b(n_classes=args.n_classes,
+                                                kernel_size=args.kernel_size, )
+    if args.aggregation_model_c :
+        segmentation_head = Segmentation_Head_c(n_classes=args.n_classes,
                                                 kernel_size=args.kernel_size, )
 
 
@@ -291,6 +294,7 @@ if __name__ == "__main__":
     parser.add_argument("--pretrained_segmentation_model", type=str)
     parser.add_argument("--do_attn_loss", action='store_true')
     parser.add_argument("--aggregation_model_b", action='store_true')
+    parser.add_argument("--aggregation_model_c", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
