@@ -7,7 +7,7 @@ import os
 from attention_store import AttentionStore
 from data import call_dataset
 from model import call_model_package
-from model.segmentation_unet import Segmentation_Head
+from model.segmentation_unet import Segmentation_Head, Segmentation_Head_b
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
@@ -45,6 +45,10 @@ def main(args):
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
     segmentation_head = Segmentation_Head(n_classes=args.n_classes,
                                           kernel_size = args.kernel_size,)
+    if args.aggregation_model_b :
+        segmentation_head = Segmentation_Head_b(n_classes=args.n_classes,
+                                                kernel_size=args.kernel_size, )
+
 
 
     print(f'\n step 5. optimizer')
@@ -136,30 +140,6 @@ def main(args):
             loss = criterion(masks_pred_,  # 1,4,128,128
                              gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['cross_entropy_loss'] = loss.item()
-
-            # [5.0] my liss
-            # masks_pred = [1,4,128,128]
-            if batch['sample_idx'] == 1 :
-
-                if args.do_attn_loss :
-                    masks_pred_permute = masks_pred.permute(0, 2, 3, 1).contiguous()                # 1,128,128,4
-                    masks_pred_permute = torch.softmax(masks_pred_permute, dim=-1)                  # 1,128*
-                    masks_pred_permute = masks_pred_permute.view(-1, masks_pred_permute.shape[-1])  # 128*128,4
-                    class_num = masks_pred_permute.shape[-1]
-                    attn_loss = torch.Tensor(0).to(device)
-                    for class_idx in range(class_num):
-                        if class_idx == 2 :
-                            pred_attn_vector = masks_pred_permute[:, class_idx].squeeze() # 128*128
-                            activation_position = gt[:, class_idx]                     # 128*128
-                            deactivation_position = 1 - activation_position     # many 1
-                            total_attn = torch.ones_like(pred_attn_vector)
-                            activation_loss =  (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
-                            deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
-                            loss += activation_loss + deactivation_loss
-                            loss += deactivation_loss
-                    #loss += attn_loss
-
-
 
             # [5.2] Focal Loss
             focal_loss = loss_multi_focal(masks_pred_,  # N,C
@@ -310,6 +290,7 @@ if __name__ == "__main__":
     parser.add_argument("--check_training", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     parser.add_argument("--do_attn_loss", action='store_true')
+    parser.add_argument("--aggregation_model_b", action='store_true')
     args = parser.parse_args()
     unet_passing_argument(args)
     passing_argument(args)
