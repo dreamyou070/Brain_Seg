@@ -201,7 +201,23 @@ def main(args):
                             loss += activation_loss + deactivation_loss
                             #loss += deactivation_loss
 
+            if args.do_attn_loss_anomaly :
 
+                gt = gt.permute(0, 2, 3, 1).contiguous()  # 1,256,256,4
+                gt = gt.view(-1, gt.shape[-1])              # 128*128,4
+                masks_pred_permute = masks_pred.permute(0, 2, 3, 1).contiguous()  # 1,res,res,4
+                masks_pred_permute = torch.softmax(masks_pred_permute, dim=-1)
+                masks_pred_permute = masks_pred_permute.view(-1, masks_pred_permute.shape[-1])  # 128*128,4
+                class_num = masks_pred_permute.shape[-1]
+                normal_position = gt[:,0]
+                for class_idx in range(class_num):
+                    pred_attn_vector = masks_pred_permute[:, class_idx].squeeze()  # 128*128
+                    activation_position = gt[:, class_idx]  # 128*128
+                    deactivation_position = 1 - (normal_position + activation_position)
+                    total_attn = torch.ones_like(pred_attn_vector)
+                    activation_loss = (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
+                    deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
+                    loss += activation_loss + deactivation_loss
 
 
             if args.segment_with_binary :
@@ -415,8 +431,7 @@ if __name__ == "__main__":
     parser.add_argument("--do_penalty_loss", action='store_true')
     parser.add_argument("--norm_type", type = str)
     parser.add_argument("--saving_original_query", action='store_true')
-
-
+    parser.add_argument("--do_attn_loss_anomaly", action='store_true')
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
                         help="format to save the model (default is .safetensors)", )

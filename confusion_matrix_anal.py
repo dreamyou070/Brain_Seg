@@ -1,9 +1,12 @@
 import numpy as np
-"""
-confusion_matrix = np.array([[148501218, 12432, 417966, 33333],
-[58165, 558565, 65221, 144774],
-[694283, 62328, 3115202, 55516],
-[72120, 71220, 52321, 848600],])
+
+
+
+
+
+confusion_matrix = np.array([[12656660, 19398,5828],
+[37853, 563654, 17585],
+[10269, 14814, 43283],])
 
 
 real_axis, pred_axis = confusion_matrix.shape
@@ -25,3 +28,4 @@ masks_pred = torch.randn(1,3,256,256)
 y_pred = torch.argmax(masks_pred, dim=1).flatten() # change to one_hot
 y_pred = F.one_hot(y_pred, num_classes=3)
 print(y_pred.shape)
+"""
