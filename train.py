@@ -56,6 +56,7 @@ def main(args):
         segmentation_head = Segmentation_Head_a_with_binary(n_classes=args.n_classes,
                                                             use_batchnorm=args.use_batchnorm,
                                                             mask_res=args.mask_res,
+                                                            norm_type=args.norm_type,
                                                             use_nonlinearity=args.use_nonlinearity)
         if args.aggregation_model_b:
             segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
@@ -389,6 +390,8 @@ if __name__ == "__main__":
     parser.add_argument("--check_training", action='store_true')
     parser.add_argument("--do_dice_loss", action='store_true')
     parser.add_argument("--do_penalty_loss", action='store_true')
+    parser.add_argument("--norm_type", type = str)
+
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
                         help="format to save the model (default is .safetensors)", )
