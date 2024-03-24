@@ -58,7 +58,6 @@ def main(args):
                                                             mask_res=args.mask_res,
                                                             use_nonlinearity=args.use_nonlinearity)
         if args.aggregation_model_b:
-            print(f'making model with aggregation model b')
             segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
                                                                 use_batchnorm=args.use_batchnorm,
                                                                 mask_res=args.mask_res,
@@ -83,12 +82,6 @@ def main(args):
                                                     use_batchnorm=args.use_batchnorm,
                                                     mask_res = args.mask_res,
                                                     use_nonlinearity=args.use_nonlinearity)
-        if args.with_4_layers :
-            segmentation_head = Segmentation_Head_c_4layers(n_classes=args.n_classes,
-                                                            mask_res=256,
-                                                            use_batchnorm=args.use_batchnorm,
-                                                            use_nonlinearity=args.use_nonlinearity,
-                                                            res=16)
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -179,6 +172,8 @@ def main(args):
                 print(f'x16_out = {x16_out.shape}')
                 print(f'x32_out = {x32_out.shape}')
                 print(f'x64_out = {x64_out.shape}')
+                print(f'segmentation_head = {segmentation_head}')
+                print(f'segmentation_head = {segmentation_head.__class__.__name__}')
 
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
             else :
