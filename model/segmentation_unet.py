@@ -130,7 +130,6 @@ class Up(nn.Module):
 
         # [1] x1
         x1 = self.up(x1)
-        print(f'x1.shape = {x1.shape}')
         # input is CHW
 
         diffY = x2.size()[2] - x1.size()[2]
