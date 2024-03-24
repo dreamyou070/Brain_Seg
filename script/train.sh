@@ -1,12 +1,12 @@
 # !/bin/bash
 #
-port_number=58832
+port_number=58844
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="19_segmentation_model_a_with_crossentropy_focal_loss_data_sy_focal_loss_change_equation_layer_norm_leaky_relu"
+file_name="21_segmentation_model_transformer_with_crossentropy_focal_loss_data_sy_focal_loss_change_equation_layer_norm_silu"
 #--use_position_embedder \
 #--aggregation_model_b
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
@@ -19,10 +19,12 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --latent_res 64 \
  --trigger_word "polyp" \
  --obj_name "${obj_name}" \
- --trg_layer_list "['up_blocks_1_attentions_2_transformer_blocks_0_attn2',
+ --trg_layer_list "['down_blocks_0_attentions_0_transformer_blocks_0_attn2'
+                    'up_blocks_1_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --n_classes 3 \
  --mask_res 256 \
  --cross_entropy_focal_loss_both \
- --norm_type "layer_norm" --nonlinearity_type "leaky_relu"
+ --norm_type "layer_norm" --nonlinearity_type "silu" --segment_with_transformer
+

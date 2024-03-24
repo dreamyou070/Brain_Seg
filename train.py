@@ -8,7 +8,8 @@ from attention_store import AttentionStore
 from data import call_dataset
 from model import call_model_package
 from model.segmentation_unet import Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c, \
-    Segmentation_Head_a_with_binary, Segmentation_Head_b_with_binary, Segmentation_Head_c_with_binary, Segmentation_Head_a_position_embedding
+    Segmentation_Head_a_with_binary, Segmentation_Head_b_with_binary, Segmentation_Head_c_with_binary, VisionTransformer
+
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
@@ -84,11 +85,10 @@ def main(args):
                                                     use_batchnorm=args.use_batchnorm,
                                                     mask_res = args.mask_res,
                                                     use_nonlinearity=args.use_nonlinearity)
-        if args.aggregation_model_a_with_pe :
-            segmentation_head = Segmentation_Head_a_position_embedding(n_classes=args.n_classes,
-                                                   mask_res = args.mask_res,
-                                                   norm_type=args.norm_type,
-                                                   use_nonlinearity=args.use_nonlinearity)
+        if args.segment_with_transformer :
+            segmentation_head = VisionTransformer(use_nonlinearity=args.use_nonlinearity,
+                                                  mask_res=args.mask_res,
+                                                  n_classes=args.n_classes)
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -169,14 +169,18 @@ def main(args):
             controller.reset()
             q_dict = {}
             for layer in args.trg_layer_list:
+                position = layer.split('_')[0]
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
                 res = int(query.shape[1] ** 0.5)
-                q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
-            x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
+                q_dict[f"{position}_res"] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
+            x16_out, x32_out, x64_out = q_dict['up_16'], q_dict['up_32'], q_dict['up_64']
+            x64_out_down = q_dict['down_64']
 
             # [2] segmentation head
             if args.segment_with_binary :
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
+            elif args.segment_with_down_feature :
+                masks_pred = segmentation_head(x16_out, x32_out, x64_out, x64_out_down)  # 1,4,128,128
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous()              # 1,128,128,4
@@ -393,6 +397,7 @@ if __name__ == "__main__":
     parser.add_argument("--aggregation_model_b", action='store_true')
     parser.add_argument("--aggregation_model_c", action='store_true')
     parser.add_argument("--aggregation_model_a_with_pe", action='store_true')
+    parser.add_argument("--segment_with_transformer", action='store_true')
     parser.add_argument("--nonlinearity_type", type=str, default="relu", choices=["relu", "gelu", "silu", "mish", "leaky_relu"], )
     parser.add_argument("--segment_with_binary", action='store_true')
     parser.add_argument("--with_4_layers", action='store_true')
