@@ -10,65 +10,75 @@ import torch.nn.functional as F
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
-    def __init__(self, in_channels, out_channels, mid_channels=None, norm_type = 'layernorm'):
+    def __init__(self, in_channels, out_channels, mid_channels=None, norm_type = 'layernorm', nonlinear_type = 'relu'):
         super().__init__()
 
         if not mid_channels:
             mid_channels = out_channels
 
         self.norm_type =norm_type
+        self.nonlinear_type = nonlinear_type
+        if self.nonlinear_type == 'relu':
+            nonlinearity = nn.ReLU(inplace=True)
+        elif self.nonlinear_type == 'leaky_relu':
+            nonlinearity = nn.LeakyReLU(inplace=True)
 
         if norm_type == 'batch_norm':
             self.double_conv = nn.Sequential(nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
                                              nn.BatchNorm2d(mid_channels),
-                                             nn.ReLU(inplace=True),
+                                             nonlinearity,
                                              nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
                                              nn.BatchNorm2d(out_channels),
-                                             nn.ReLU(inplace=True))
+                                             nonlinearity)
         elif norm_type == 'layer_norm':
             self.double_conv = nn.Sequential(nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
                                              nn.LayerNorm([mid_channels, int(20480/mid_channels),int(20480/mid_channels)]),
-                                             nn.ReLU(inplace=True),
+                                             nonlinearity,
                                              nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1,bias=False),
                                              nn.LayerNorm([mid_channels, int(20480 / mid_channels), int(20480 / mid_channels)]),
-                                             nn.ReLU(inplace=True))
+                                             nonlinearity)
         elif norm_type == 'instance_norm':
             self.double_conv = nn.Sequential(nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
                                              nn.InstanceNorm2d(mid_channels),
-                                             nn.ReLU(inplace=True),
+                                             nonlinearity,
                                              nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
                                              nn.InstanceNorm2d(out_channels),
-                                             nn.ReLU(inplace=True))
+                                             nonlinearity)
     def forward(self, x):
         return self.double_conv(x)
 
 class DoubleConv_res(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
-    def __init__(self, in_channels, out_channels, mid_channels=None, use_batchnorm = True, res=16):
+    def __init__(self, in_channels, out_channels, mid_channels=None, use_batchnorm = True, res=16, nonlinear_type = 'relu'):
         super().__init__()
         if not mid_channels:
             mid_channels = out_channels
+        self.nonlinear_type = nonlinear_type
+        if self.nonlinear_type == 'relu':
+            nonlinearity = nn.ReLU(inplace=True)
+        elif self.nonlinear_type == 'leaky_relu':
+            nonlinearity = nn.LeakyReLU(inplace=True)
 
         if use_batchnorm :
             self.double_conv = nn.Sequential(nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
                                              nn.BatchNorm2d(mid_channels),
-                                             nn.ReLU(inplace=True),
+                                             nonlinearity,
                                              nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
                                              nn.BatchNorm2d(out_channels),
-                                             nn.ReLU(inplace=True))
+                                             nonlinearity)
         else :
             self.double_conv = nn.Sequential(nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
                                              nn.LayerNorm([mid_channels, res,res]),
-                                             nn.ReLU(inplace=True),
+                                             nonlinearity,
                                              nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1,bias=False),
                                              nn.LayerNorm([mid_channels, res,res]),
-                                             nn.ReLU(inplace=True))
+                                             nonlinearity)
     def forward(self, x):
         return self.double_conv(x)
 
 class Up_special(nn.Module):
     """Upscaling then double conv"""
-    def __init__(self, in_channels, out_channels, bilinear=True, use_batchnorm = True, res=16 ):
+    def __init__(self, in_channels, out_channels, bilinear=True, use_batchnorm = True, res=16, nonlinear_type = 'relu'):
         super().__init__()
         # if bilinear, use the normal convolutions to reduce the number of channels
         if bilinear:
@@ -79,7 +89,8 @@ class Up_special(nn.Module):
             self.conv = DoubleConv_res(int(in_channels+in_channels // 2),
                                        out_channels,
                                        use_batchnorm = use_batchnorm,
-                                       res=res)
+                                       res=res,
+                                       nonlinear_type=nonlinear_type)
 
     def forward(self, x1, x2):
 
@@ -98,7 +109,7 @@ class Up_special(nn.Module):
 
 class Up(nn.Module):
     """Upscaling then double conv"""
-    def __init__(self, in_channels, out_channels, bilinear=True, norm_type = 'layer_norm' ):
+    def __init__(self, in_channels, out_channels, bilinear=True, norm_type = 'layer_norm', nonlinear_type = 'relu'):
         super().__init__()
         # if bilinear, use the normal convolutions to reduce the number of channels
         if bilinear:
@@ -106,7 +117,7 @@ class Up(nn.Module):
             self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
         else:
             self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
-            self.conv = DoubleConv(in_channels, out_channels, norm_type = norm_type)
+            self.conv = DoubleConv(in_channels, out_channels, norm_type = norm_type, nonlinear_type = nonlinear_type)
 
     def forward(self, x1, x2):
 
@@ -125,18 +136,21 @@ class Up(nn.Module):
 class Up_conv(nn.Module):
     """Upscaling then double conv"""
 
-    def __init__(self, in_channels, out_channels, kernel_size=2, res=128, use_nonlinearity = False):
+    def __init__(self, in_channels, out_channels, kernel_size=2, res=128, use_nonlinearity = False, linear_type = 'relu'):
         super().__init__()
         # if bilinear, use the normal convolutions to reduce the number of channels
         self.up = nn.ConvTranspose2d(in_channels = in_channels,
                                      out_channels = out_channels,
-                                     kernel_size=kernel_size, stride=kernel_size)
+                                     kernel_size=kernel_size,
+                                     stride=kernel_size)
 
         self.use_nonlinearity = use_nonlinearity
         if self.use_nonlinearity :
             self.layernorm = nn.LayerNorm([out_channels,res, res])
-            self.nonlinear = nn.ReLU(inplace=True)
-        # Layernorm 와 Relu 는 왜 쓰는 걸까?
+            if linear_type == 'relu':
+                self.nonlinear = nn.ReLU(inplace=True)
+            elif linear_type == 'leaky_relu':
+                self.nonlinear = nn.LeakyReLU(inplace=True)
     def forward(self, x1):
         x = self.up(x1)
         if self.use_nonlinearity :
@@ -161,39 +175,43 @@ class Segmentation_Head_a_with_binary(nn.Module):
                  bilinear=False,
                  use_batchnorm=True,
                  mask_res = 128,
-                 use_nonlinearity = False
-                 ):
+                 use_nonlinearity = False,
+                 nonlinearity_type = 'relu'):
         super(Segmentation_Head_a_with_binary, self).__init__()
 
         self.n_classes = n_classes
         self.mask_res = mask_res
         self.bilinear = bilinear
         factor = 2 if bilinear else 1
-        self.up1 = (Up(1280, 640 // factor, bilinear, use_batchnorm))
-        self.up2 = (Up(640, 320 // factor, bilinear, use_batchnorm))
+        self.up1 = Up(1280, 640 // factor, bilinear, use_batchnorm, nonlinearity_type)
+        self.up2 = Up(640, 320 // factor, bilinear, use_batchnorm, nonlinearity_type)
         self.up3 = Up_conv(in_channels = 320,
                            out_channels = 160,
                            res = 128,
                            kernel_size=2,
-                           use_nonlinearity = use_nonlinearity)
+                           use_nonlinearity = use_nonlinearity,
+                           nonlinear_type = nonlinearity_type)
         global_res = 128
         if self.mask_res == 256 :
             self.up4 = Up_conv(in_channels = 160,
                                out_channels = 160,
                                res = 256,
                                kernel_size=2,
-                               use_nonlinearity = use_nonlinearity)
+                               use_nonlinearity = use_nonlinearity,
+                               nonlinear_type = nonlinearity_type)
             global_res = 256
         self.binary_up = Up_conv(in_channels=160,
                                  out_channels=80,
                                  res=global_res,
                                  kernel_size=1,
-                                 use_nonlinearity=use_nonlinearity)
+                                 use_nonlinearity=use_nonlinearity,
+                                 nonlinear_type = nonlinearity_type)
         self.segment_up = Up_conv(in_channels=160,
                                   out_channels=80,
                                   res=global_res,
                                   kernel_size=1,
-                                  use_nonlinearity=use_nonlinearity)
+                                  use_nonlinearity=use_nonlinearity,
+                                  nonlinear_type = nonlinearity_type)
         self.outc_b = OutConv(80, 2)
         self.outc_s = OutConv(160, n_classes)
 

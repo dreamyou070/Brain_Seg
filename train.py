@@ -57,7 +57,8 @@ def main(args):
                                                             use_batchnorm=args.use_batchnorm,
                                                             mask_res=args.mask_res,
                                                             norm_type=args.norm_type,
-                                                            use_nonlinearity=args.use_nonlinearity)
+                                                            use_nonlinearity=args.use_nonlinearity,
+                                                            nonlinearity_type=args.nonlinearity_type)
         if args.aggregation_model_b:
             segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
                                                                 use_batchnorm=args.use_batchnorm,
@@ -392,6 +393,7 @@ if __name__ == "__main__":
     parser.add_argument("--aggregation_model_b", action='store_true')
     parser.add_argument("--aggregation_model_c", action='store_true')
     parser.add_argument("--aggregation_model_a_with_pe", action='store_true')
+    parser.add_argument("--nonlinearity_type", type=str, default="relu", choices=["relu", "gelu", "silu", "mish", "leaky_relu"], )
     parser.add_argument("--segment_with_binary", action='store_true')
     parser.add_argument("--with_4_layers", action='store_true')
     parser.add_argument("--use_batchnorm", action='store_true')
