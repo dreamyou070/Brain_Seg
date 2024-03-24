@@ -58,6 +58,7 @@ def main(args):
                                                             mask_res=args.mask_res,
                                                             use_nonlinearity=args.use_nonlinearity)
         if args.aggregation_model_b:
+            print(f'making model with aggregation model b')
             segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
                                                                 use_batchnorm=args.use_batchnorm,
                                                                 mask_res=args.mask_res,
@@ -174,6 +175,11 @@ def main(args):
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
 
             if args.segment_with_binary :
+                # here problem #
+                print(f'x16_out = {x16_out.shape}')
+                print(f'x32_out = {x32_out.shape}')
+                print(f'x64_out = {x64_out.shape}')
+
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
