@@ -71,7 +71,7 @@ def deactivating_loss(input, target, ignore_idx):
     # input shape = [N, C] -> raw probability
     # target shape = [N, ] -> 0 , ... , C-1 --> C class index
 
-    # input = torch.randn(1,4,3,3)
+    # input = torch.randn(1,4,256,256)
     # input = torch.softmax(input, dim=1)
     # input = input.permute(0,2,3,1) # make from [1,4,3,3] to [1*3*3,4]
     # input = input.view(-1, input.shape[-1])
@@ -81,7 +81,9 @@ def deactivating_loss(input, target, ignore_idx):
     # print(penalty_loss)
 
     input = torch.softmax(input, dim=1)
-    class_num = input.shape[1]
+    input = input.permute(0, 2, 3, 1)   # make from [1,res,res,3]
+    class_num = input.shape[-1]
+    input = input.view(-1, class_num)
     penalty_loss_list = []
     for class_idx in range(class_num):
         if class_idx != ignore_idx:
