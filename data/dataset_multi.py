@@ -156,7 +156,7 @@ class TrainDataset_Seg(Dataset):
         sample_check = np.unique(gt_arr)
         sample_idx = 0
         if 2 in sample_check :
-            sample_idx = 1
+            sample_idx = 1 # small sample
         # only brain
         if self.caption == 'brain':
             gt_arr = np.where(gt_arr==4, 3, gt_arr)
@@ -171,7 +171,7 @@ class TrainDataset_Seg(Dataset):
                        self.n_classes)) # 3
         # 256,256,3
         gt[:,:,:class_num] = gt_arr_
-        gt = torch.tensor(gt).permute(2,0,1)        # 3,256,256
+        gt = torch.tensor(gt).permute(2,0,1)        # class_num,256,256
         # [3] gt flatten
         gt_flat = gt_arr.flatten() # 128*128
 

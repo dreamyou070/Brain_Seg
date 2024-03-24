@@ -1,12 +1,12 @@
 # !/bin/bash
 #
-port_number=58822
+port_number=58823
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="17_segmentation_model_a_crossentropy_focal_loss_data_sy_focal_loss_change_equation_layer_norm_not_scaling_query"
+file_name="17_segmentation_model_a_crossentropy_focal_loss_data_sy_focal_loss_change_equation_layer_norm_do_attn_loss"
 #--use_position_embedder \
 #--aggregation_model_b
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
@@ -25,4 +25,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --n_classes 3 \
  --mask_res 256 \
  --cross_entropy_focal_loss_both \
- --norm_type "layer_norm" --saving_original_query
+ --norm_type "layer_norm" --do_attn_loss

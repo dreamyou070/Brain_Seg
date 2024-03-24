@@ -147,14 +147,14 @@ def main(args):
         accelerator.print(f"\nepoch {epoch + 1}/{args.start_epoch + args.max_train_epochs}")
 
         for step, batch in enumerate(train_dataloader):
-
+            # [1] model forward
             device = accelerator.device
             loss_dict = {}
             with torch.set_grad_enabled(True):
                 encoder_hidden_states = text_encoder(batch["input_ids"].to(device))["last_hidden_state"]
             image = batch['image'].to(dtype=weight_dtype)                                   # 1,3,512,512
             gt_flat = batch['gt_flat'].to(dtype=weight_dtype)                               # 1,128*128
-            gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,3,256,256
+            gt = batch['gt'].to(dtype=weight_dtype)                                         # 1,class_num,256,256
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
@@ -168,12 +168,11 @@ def main(args):
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
 
+            # [2] segmentation head
             if args.segment_with_binary :
-                # here problem #
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
-
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous()              # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous() # pix_nuum, class_num
 
@@ -181,6 +180,29 @@ def main(args):
             loss = multiclass_criterion(masks_pred_,                       # pix_num, class_num
                                         gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['multi_class_loss'] = loss.item()
+
+            # [5.1.2] detail loss
+            if args.do_attn_loss:
+                if batch['sample_idx'] == 1 :
+                    gt = gt.permute(0, 2, 3, 1).contiguous()  # 1,256,256,4
+                    gt = gt.view(-1, gt.shape[-1])              # 128*128,4
+                    masks_pred_permute = masks_pred.permute(0, 2, 3, 1).contiguous()  # 1,res,res,4
+                    masks_pred_permute = torch.softmax(masks_pred_permute, dim=-1)
+                    masks_pred_permute = masks_pred_permute.view(-1, masks_pred_permute.shape[-1])  # 128*128,4
+                    class_num = masks_pred_permute.shape[-1]
+                    for class_idx in range(class_num):
+                        if class_idx == 2 :
+                            pred_attn_vector = masks_pred_permute[:, class_idx].squeeze()  # 128*128
+                            activation_position = gt[:, class_idx]  # 128*128
+                            deactivation_position = 1 - activation_position  # many 1
+                            total_attn = torch.ones_like(pred_attn_vector)
+                            activation_loss = (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
+                            deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
+                            loss += activation_loss + deactivation_loss
+                            #loss += deactivation_loss
+
+
+
 
             if args.segment_with_binary :
                 sigmoid = nn.Sigmoid()
