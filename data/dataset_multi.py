@@ -103,7 +103,6 @@ class TrainDataset_Seg(Dataset):
         self.n_classes = n_classes
         self.single_modality = single_modality
         self.mask_res = mask_res
-        print(f'self.mask_res = {self.mask_res}')
 
     def __len__(self):
         return len(self.image_paths)

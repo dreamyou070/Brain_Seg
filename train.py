@@ -167,6 +167,12 @@ def main(args):
                                         gt_flat.squeeze().to(torch.long))  # 128*128
             loss_dict['multi_class_loss'] = loss.item()
 
+            if args.cross_entropy_focal_loss_both:
+                """ focal loss """
+                loss_focal = multiclass_criterion_focal(masks_pred_, gt_flat.squeeze().to(torch.long))
+                loss += loss_focal
+                loss_dict['focal_loss'] = loss_focal.item()
+
             # [5.1.2] detail loss
             if args.do_attn_loss:
                 if batch['sample_idx'] == 1 :
@@ -204,6 +210,9 @@ def main(args):
                     deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
                     loss += activation_loss + deactivation_loss
 
+            if args.do_penalty_loss :
+                penalty_loss = deactivating_loss(input = masks_pred, target = gt_flat, ignore_idx=0)
+                loss += penalty_loss
 
             if args.segment_with_binary :
                 sigmoid = nn.Sigmoid()
@@ -217,18 +226,6 @@ def main(args):
                                        binary_gt_flat.to(weight_dtype))
                 loss_dict['binary_loss'] = binary_loss.item()
                 loss += binary_loss
-
-
-            if args.do_penalty_loss :
-                penalty_loss = deactivating_loss(input = masks_pred, target = gt_flat, ignore_idx=0)
-                loss += penalty_loss
-
-
-            if args.cross_entropy_focal_loss_both:
-                """ focal loss """
-                loss_focal = multiclass_criterion_focal(masks_pred_, gt_flat.squeeze().to(torch.long))
-                loss += loss_focal
-                loss_dict['focal_loss'] = loss_focal.item()
 
             if args.do_dice_loss :
                 # [5.1.2] Dice Loss
@@ -335,7 +332,8 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str, default='output')
     # step 2. dataset
     parser.add_argument("--resize_shape", type=int, default=512)
-    parser.add_argument('--data_path', type=str, default=r'../../../MyData/anomaly_detection/MVTec3D-AD')
+    parser.add_argument('--train_data_path', type=str, default=r'../../../MyData/anomaly_detection/MVTec3D-AD')
+    parser.add_argument('--test_data_path', type=str, default=r'../../../MyData/anomaly_detection/MVTec3D-AD')
     parser.add_argument('--obj_name', type=str, default='bottle')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--trigger_word', type=str)
@@ -351,6 +349,8 @@ if __name__ == "__main__":
                         help="do not use fp16/bf16 VAE in mixed precision (use float VAE) / mixed precision", )
     parser.add_argument("--position_embedding_layer", type=str)
     parser.add_argument("--d_dim", default=320, type=int)
+
+
     # step 4. model
     parser.add_argument('--pretrained_model_name_or_path', type=str, default='facebook/diffusion-dalle')
     parser.add_argument("--clip_skip", type=int, default=None,
