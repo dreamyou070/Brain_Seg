@@ -1,15 +1,15 @@
 # !/bin/bash
 #
-port_number=58809
+port_number=58808
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="9_segmentation_model_a_layer_norm_leaky_relu_crossentropy_do_attn_loss_anomaly"
+file_name="8_segmentation_model_a_layer_norm_leaky_relu_crossentropy_do_attn_loss"
 # #--do_attn_loss
 #--aggregation_model_b
-accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
+accelerate launch --config_file ../../../gpu_config/gpu_0_1_config \
  --main_process_port $port_number ../train.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
  --train_data_path "/home/dreamyou070/MyData/anomaly_detection/medical/${obj_name}/${benchmark}/train" \
@@ -28,5 +28,5 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --norm_type "layer_norm" \
- --nonlinearity_type "silu" \
- --do_attn_loss_anomaly
+ --nonlinearity_type "leaky_relu" \
+ --do_attn_loss
