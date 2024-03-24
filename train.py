@@ -172,15 +172,15 @@ def main(args):
                 position = layer.split('_')[0]
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
                 res = int(query.shape[1] ** 0.5)
-                q_dict[f"{position}_res"] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
+                q_dict[f"{position}_{res}"] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict['up_16'], q_dict['up_32'], q_dict['up_64']
-            x64_out_down = q_dict['down_64']
+            #x64_out_down = q_dict['down_64']
 
             # [2] segmentation head
             if args.segment_with_binary :
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
-            elif args.segment_with_down_feature :
-                masks_pred = segmentation_head(x16_out, x32_out, x64_out, x64_out_down)  # 1,4,128,128
+            #elif args.segment_with_down_feature :
+            #    masks_pred = segmentation_head(x16_out, x32_out, x64_out, x64_out_down)  # 1,4,128,128
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous()              # 1,128,128,4
