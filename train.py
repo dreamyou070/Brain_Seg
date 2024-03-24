@@ -182,14 +182,15 @@ def main(args):
             loss_dict['multi_class_loss'] = loss.item()
 
             if args.segment_with_binary :
+                sigmoid = nn.Sigmoid()
                 binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()                  # 1,256,256,2
                 binary_pred_ = binary_pred_.view(-1, binary_pred_.shape[-1]).contiguous()    # 256*256, 2
 
                 # later try to change 0,1 class number
                 binary_gt_flat = torch.where(gt_flat != 0, 1, 0).squeeze()                   # 256*256
                 binary_gt_flat = torch.nn.functional.one_hot(binary_gt_flat.to(torch.int64), num_classes=2)
-                binary_loss = bce_loss(binary_pred_,
-                                       binary_gt_flat)
+                binary_loss = bce_loss(sigmoid(binary_pred_),
+                                       binary_gt_flat.to(weight_dtype))
                 loss_dict['binary_loss'] = binary_loss.item()
                 loss += binary_loss
 
