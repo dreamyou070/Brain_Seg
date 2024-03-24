@@ -182,9 +182,10 @@ def main(args):
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous() # pix_nuum, class_num
 
             # [5.1.1] Multiclassification Loss
-            loss = multiclass_criterion(masks_pred_,                       # pix_num, class_num
-                                        gt_flat.squeeze().to(torch.long))  # 128*128
-            loss_dict['multi_class_loss'] = loss.item()
+            if args.do_cross_entropy_loss:
+                loss = multiclass_criterion(masks_pred_,                       # pix_num, class_num
+                                            gt_flat.squeeze().to(torch.long))  # 128*128
+                loss_dict['multi_class_loss'] = loss.item()
 
             if args.cross_entropy_focal_loss_both:
                 """ focal loss """
@@ -196,7 +197,11 @@ def main(args):
             if args.do_proposed_loss :
                 # this loss averaging all pixel num
                 act_loss, deact_loss = NLLLoss(masks_pred_, gt_flat.squeeze().to(torch.long))
-                loss += act_loss + deact_loss
+                proposed_loss = act_loss + deact_loss
+                if args.do_cross_entropy_loss:
+                    loss += proposed_loss
+                else :
+                    loss = proposed_loss
 
             if args.do_attn_loss:
                 if batch['sample_idx'] == 1 :
@@ -453,6 +458,9 @@ if __name__ == "__main__":
     parser.add_argument("--saving_original_query", action='store_true')
     parser.add_argument("--do_attn_loss_anomaly", action='store_true')
     parser.add_argument("--do_proposed_loss", action='store_true')
+    parser.add_argument("--do_cross_entropy_loss", action='store_true')
+
+
 
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],

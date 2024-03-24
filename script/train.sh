@@ -1,12 +1,12 @@
 # !/bin/bash
 #
-port_number=58810
+port_number=58811
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="10_segmentation_model_a_layer_norm_leaky_relu_crossentropy_do_proposed_loss"
+file_name="11_segmentation_model_a_layer_norm_leaky_relu_only_do_proposed_loss"
 # #--do_attn_loss
 #--aggregation_model_b
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
