@@ -3,13 +3,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from functools import partial
 from timm.models.layers import trunc_normal_, DropPath
 from fairscale.nn.checkpoint.checkpoint_activations import checkpoint_wrapper
-
 
 #x16_out = torch.randn(1, 1280, 16, 16)
 #x32_out = torch.randn(1, 640, 32, 32)
@@ -665,9 +661,3 @@ class VisionTransformer(nn.Module):
             x = self.up_256(x)
         logits = self.outc(x)  # 1,4, 128,128
         return logits
-
-
-x16_out = torch.randn(1, 1280, 16, 16)
-x32_out = torch.randn(1, 640, 32, 32)
-x64_out = torch.randn(1, 320, 64, 64)
-
