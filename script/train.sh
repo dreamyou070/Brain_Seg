@@ -1,12 +1,12 @@
 # !/bin/bash
 #
-port_number=58807
+port_number=58805
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="14_segmentation_model_c_crossentropy_focal_loss_data_sy_layer_norm_penalty_loss_with_binary"
+file_name="14_segmentation_model_b_crossentropy_focal_loss_data_sy_layer_norm_penalty_loss_with_binary"
 #--use_position_embedder \
 #--aggregation_model_b
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
@@ -26,5 +26,5 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --mask_res 256 \
  --cross_entropy_focal_loss_both \
  --do_penalty_loss \
- --aggregation_model_c \
+ --aggregation_model_b \
  --segment_with_binary
