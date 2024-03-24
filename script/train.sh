@@ -6,7 +6,7 @@ obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="12_segmentation_model_c_crossentropy_focal_loss_data_sy_layer_norm_penalty_loss"
+file_name="13_segmentation_model_c_crossentropy_focal_loss_data_sy_layer_norm_penalty_loss"
 #--use_position_embedder \
 #--aggregation_model_b
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
