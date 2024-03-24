@@ -66,3 +66,33 @@ def dice_loss(input: Tensor,
     dice_loss = 1 - dice_coefficient
     return dice_loss
 
+
+def deactivating_loss(input, target, ignore_idx):
+    # input shape = [N, C] -> raw probability
+    # target shape = [N, ] -> 0 , ... , C-1 --> C class index
+
+    # input = torch.randn(1,4,3,3)
+    # input = torch.softmax(input, dim=1)
+    # input = input.permute(0,2,3,1) # make from [1,4,3,3] to [1*3*3,4]
+    # input = input.view(-1, input.shape[-1])
+    # target = torch.randint(0,4,(9,))
+    # ignore_idx = 0
+    # penalty_loss = deactivating_loss(input, target, ignore_idx)
+    # print(penalty_loss)
+
+    input = torch.softmax(input, dim=1)
+    class_num = input.shape[1]
+    penalty_loss_list = []
+    for class_idx in range(class_num):
+        if class_idx != ignore_idx:
+            # [1] input probability
+            target_input = input[:, class_idx]
+            target_position = torch.where(target == class_idx, 1, 0)
+            un_position = 1 - target_position
+            total_input = torch.ones_like(target_input)
+            un_position_score = target_input * un_position
+            un_position_loss = (un_position_score / total_input) ** 2
+            penalty_loss_list.append(un_position_loss)
+    penalty_loss = torch.stack(penalty_loss_list).mean(dim=-1)  # 3, 9 -> class by averaging
+    penalty_loss = torch.mean(penalty_loss)  # total averaging
+    return penalty_loss

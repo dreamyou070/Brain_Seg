@@ -20,6 +20,7 @@ from utils.loss import MulticlassLoss
 from utils.evaluate import evaluation_check
 from torch.nn import functional as F
 from ignite.metrics.confusion_matrix import ConfusionMatrix
+from utils.loss import deactivating_loss
 from ignite.engine import *
 from ignite.metrics import *
 def eval_step(engine, batch):
@@ -199,6 +200,13 @@ def main(args):
                 loss += binary_loss
 
 
+            if args.do_penalty_loss :
+                penalty_loss = deactivating_loss(input = torch.softmax(masks_pred, dim = 1),
+                                                 target = gt_flat,
+                                                 ignore_idx=0)
+                loss += penalty_loss
+
+
             if args.cross_entropy_focal_loss_both:
                 """ focal loss """
                 loss_focal = multiclass_criterion_focal(masks_pred_, gt_flat.squeeze().to(torch.long))
@@ -275,6 +283,18 @@ def main(args):
         if is_main_process:
             print(f'  - precision dictionary = {IOU_dict}')
             print(f'  - confusion_matrix = {confusion_matrix}')
+            # numpy to list
+            import numpy as np
+            confusion_matrix = confusion_matrix.tolist()
+            confusion_save_dir = os.path.join(args.output_dir, 'confusion.txt')
+            with open(confusion_save_dir, 'a') as f:
+                f.write(f' epoch = {epoch + 1} \n')
+                for i in range(len(confusion_matrix)):
+                    for j in range(len(confusion_matrix[i])):
+                        f.write(' ' + str(confusion_matrix[i][j]) + ' ')
+                    f.write('\n')
+                f.write('\n')
+
             score_save_dir = os.path.join(args.output_dir, 'score.txt')
             with open(score_save_dir, 'a') as f:
                 dices = []
@@ -286,6 +306,7 @@ def main(args):
                 dice_coeff = sum(dices) / len(dices)
                 f.write(f'| dice_coeff = {dice_coeff}')
                 f.write(f'\n')
+
     accelerator.end_training()
 
 
@@ -374,6 +395,7 @@ if __name__ == "__main__":
     parser.add_argument("--cross_entropy_focal_loss_both", action='store_true')
     parser.add_argument("--check_training", action='store_true')
     parser.add_argument("--do_dice_loss", action='store_true')
+    parser.add_argument("--do_penalty_loss", action='store_true')
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
                         help="format to save the model (default is .safetensors)", )
