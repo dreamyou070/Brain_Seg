@@ -35,7 +35,7 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
                 unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
-            query_dict, key_dict, attn_dict = controller.query_dict, controller.key_dict, controller.attn_dict
+            query_dict, key_dict = controller.query_dict, controller.key_dict
             controller.reset()
             q_dict = {}
             for layer in args.trg_layer_list:
@@ -43,13 +43,8 @@ def evaluation_check(segmentation_head, dataloader, device, text_encoder, unet, 
                 res = int(query.shape[1] ** 0.5)
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
-            if 8 in q_dict.keys():
-                x8_out = q_dict[8]
-
             if args.segment_with_binary :
-                binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out)
-            elif args.with_4_layers :
-                masks_pred = segmentation_head(x8_out, x16_out, x32_out, x64_out)
+                binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
             #######################################################################################################################
