@@ -24,8 +24,12 @@ class MulticlassLoss(nn.Module):
         # input is probability
         logpt = F.log_softmax(input, dim=1)
         if self.focal_loss:
-            logpt = torch.exp(logpt) # -> probability
-            logpt = ((1 - logpt) ** self.gamma) * logpt # probability refered
+            """ Change Equation """
+            #logpt = torch.exp(logpt) # -> probability
+            #logpt = ((1 - logpt) ** self.gamma) * logpt # probability refered
+            pt = torch.exp(logpt)
+            logpt = ((1 - pt) ** self.gamma) * logpt
+
 
         # [2] what is nll_loss
         loss = F.nll_loss(logpt,
