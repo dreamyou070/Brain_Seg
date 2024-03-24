@@ -49,9 +49,6 @@ def register_attention_control(unet: nn.Module,controller: AttentionStore):
                 beta=0,
                 alpha=self.scale,)
             attention_probs = attention_scores.softmax(dim=-1).to(value.dtype)
-            if trg_layer_list is not None and layer_name in trg_layer_list :
-                trg_attn = attention_probs[:,:,:2]
-                controller.save_attn(trg_attn, layer_name)
             hidden_states = torch.bmm(attention_probs, value)
             hidden_states = self.reshape_batch_dim_to_heads(hidden_states)
             hidden_states = self.to_out[0](hidden_states)
