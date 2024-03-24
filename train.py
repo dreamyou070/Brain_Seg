@@ -25,6 +25,25 @@ from ignite.metrics import *
 def eval_step(engine, batch):
     return batch
 
+def NLLLoss(model_output, targets):
+
+    """ proposed personalized loss """
+
+    p = torch.softmax(model_output, dim=1)
+    log_p = torch.log(p)
+
+    activating_out = torch.zeros_like(targets, dtype=torch.float)
+    deactivating_out = torch.zeros_like(targets, dtype=torch.float)
+    for i in range(len(targets)):
+        act = log_p[i][targets[i]]
+        deact = log_p[i].sum() - act
+        activating_out[i] = act
+        deactivating_out[i] = deact
+    act_loss = -activating_out.sum()/len(activating_out)
+    deact_loss = -deactivating_out.sum()/len(deactivating_out)
+    return act_loss, deact_loss
+
+
 def main(args):
 
     print(f'\n step 1. setting')
@@ -174,6 +193,11 @@ def main(args):
                 loss_dict['focal_loss'] = loss_focal.item()
 
             # [5.1.2] detail loss
+            if args.do_proposed_loss :
+                # this loss averaging all pixel num
+                act_loss, deact_loss = NLLLoss(masks_pred_, gt_flat.squeeze().to(torch.long))
+                loss += act_loss + deact_loss
+
             if args.do_attn_loss:
                 if batch['sample_idx'] == 1 :
                     gt = gt.permute(0, 2, 3, 1).contiguous()  # 1,256,256,4
@@ -192,6 +216,13 @@ def main(args):
                             deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
                             loss += activation_loss + deactivation_loss
                             #loss += deactivation_loss
+
+
+
+
+
+
+
 
             if args.do_attn_loss_anomaly :
                 gt = gt.permute(0, 2, 3, 1).contiguous()  # 1,256,256,4
@@ -421,6 +452,8 @@ if __name__ == "__main__":
     parser.add_argument("--norm_type", type = str)
     parser.add_argument("--saving_original_query", action='store_true')
     parser.add_argument("--do_attn_loss_anomaly", action='store_true')
+    parser.add_argument("--do_proposed_loss", action='store_true')
+
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
                         help="format to save the model (default is .safetensors)", )
