@@ -70,8 +70,8 @@ def main(args):
                                                                 use_nonlinearity=args.use_nonlinearity)
     else :
         segmentation_head = Segmentation_Head_a(n_classes=args.n_classes,
-                                                use_batchnorm=args.use_batchnorm,
                                                 mask_res = args.mask_res,
+                                                norm_type=args.norm_type,
                                                 use_nonlinearity=args.use_nonlinearity)
         if args.aggregation_model_b :
             segmentation_head = Segmentation_Head_b(n_classes=args.n_classes,
