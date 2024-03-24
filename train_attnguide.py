@@ -166,6 +166,27 @@ def main(args):
                 query = query_dict[layer][0].squeeze()  # head, pix_num, dim
                 res = int(query.shape[1] ** 0.5)
                 q_dict[res] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
+
+                # upscaling
+                def resize_query_features(query):
+                    head_num, pix_num, dim = query.shape
+                    res = int(pix_num ** 0.5)  # 8
+                    query_map = query.view(head_num, res, res, dim).permute(0, 3, 1,
+                                                                            2).contiguous()  # 1, channel, res, res
+                    resized_query_map = nn.functional.interpolate(query_map, size=(args.mask_res,args.mask_res),
+                                                                  mode='bilinear')  # 1, channel, 64,  64
+                    resized_query = resized_query_map.permute(0, 2, 3,
+                                                              1).contiguous().squeeze()  # head, 64, 64, channel
+                    resized_query = resized_query.view(head_num, args.mask_res*args.mask_res, dim)  # 8, 64*64, dim
+                    return resized_query
+
+                resized_query = resize_query_features(query)
+                key = key_dict[layer][0].squeeze()  # 1, pix_num, dim
+                print(f'resized_query = {resized_query.shape}, key = {key.shape}')
+                # attn_map = [batch, 256*256, 77]
+
+
+
             x16_out, x32_out, x64_out = q_dict[16], q_dict[32], q_dict[64]
 
             if args.segment_with_binary :
@@ -391,8 +412,6 @@ if __name__ == "__main__":
     parser.add_argument("--do_dice_loss", action='store_true')
     parser.add_argument("--do_penalty_loss", action='store_true')
     parser.add_argument("--norm_type", type = str)
-    parser.add_argument("--saving_original_query", action='store_true')
-
 
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
