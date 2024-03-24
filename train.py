@@ -8,7 +8,7 @@ from attention_store import AttentionStore
 from data import call_dataset
 from model import call_model_package
 from model.segmentation_unet import Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c, \
-    Segmentation_Head_a_with_binary, Segmentation_Head_b_with_binary, Segmentation_Head_c_with_binary
+    Segmentation_Head_a_with_binary, Segmentation_Head_b_with_binary, Segmentation_Head_c_with_binary, Segmentation_Head_a_position_embedding
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
@@ -83,6 +83,11 @@ def main(args):
                                                     use_batchnorm=args.use_batchnorm,
                                                     mask_res = args.mask_res,
                                                     use_nonlinearity=args.use_nonlinearity)
+        if args.aggregation_model_a_with_pe :
+            segmentation_head = Segmentation_Head_a_position_embedding(n_classes=args.n_classes,
+                                                   mask_res = args.mask_res,
+                                                   norm_type=args.norm_type,
+                                                   use_nonlinearity=args.use_nonlinearity)
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -386,6 +391,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--aggregation_model_b", action='store_true')
     parser.add_argument("--aggregation_model_c", action='store_true')
+    parser.add_argument("--aggregation_model_a_with_pe", action='store_true')
     parser.add_argument("--segment_with_binary", action='store_true')
     parser.add_argument("--with_4_layers", action='store_true')
     parser.add_argument("--use_batchnorm", action='store_true')

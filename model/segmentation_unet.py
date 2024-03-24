@@ -460,3 +460,103 @@ x32_out = torch.randn(1, 640, 32, 32)
 x64_out = torch.randn(1, 320, 64, 64)
 output = model(x16_out, x32_out, x64_out)
 """
+class ViTPatchEmbeddings(nn.Module):
+
+    def __init__(self, image_size, patch_size, num_channels, hidden_size):
+        super().__init__()
+        image_size, patch_size = image_size, patch_size
+        num_channels, hidden_size = num_channels, hidden_size
+        patch_size = (1,1)
+        num_patches = (image_size[1] // patch_size[1]) * (image_size[0] // patch_size[0])
+        self.image_size = image_size
+        self.patch_size = patch_size
+        self.num_channels = num_channels
+        self.num_patches = num_patches
+        self.projection = nn.Conv2d(num_channels,
+                                    hidden_size,
+                                    kernel_size=patch_size, stride=patch_size)
+    def forward(self,
+                pixel_values: torch.Tensor) -> torch.Tensor:
+        embeddings = self.projection(pixel_values)
+        return embeddings
+
+class Segmentation_Head_a_position_embedding(nn.Module):
+
+    def __init__(self,
+                 n_classes,
+                 bilinear=False,
+                 mask_res = 128,
+                 norm_type = 'layer_norm',
+                 use_nonlinearity = False):
+        super(Segmentation_Head_a_position_embedding, self).__init__()
+
+        self.n_classes = n_classes
+        self.mask_res = mask_res
+        self.bilinear = bilinear
+        factor = 2 if bilinear else 1
+        self.up1 = Up(1280,
+                      640 // factor,
+                      bilinear,
+                      norm_type)
+        self.up2 = Up(640,
+                      320 // factor,
+                      bilinear,
+                      norm_type)
+        self.up3 = Up_conv(in_channels = 320,
+                           out_channels = 160,
+                           kernel_size=2,
+                           res = 128,
+                           use_nonlinearity = use_nonlinearity) # 64 -> 128 , channel 320 -> 160
+        if self.mask_res == 256 :
+            self.up4 = Up_conv(in_channels = 160,
+                               out_channels = 160,
+                               kernel_size=2,
+                               res=256,
+                               use_nonlinearity = use_nonlinearity)  # 128 -> 256
+        self.outc = OutConv(160, n_classes)
+
+        self.patch_embeddings_16 = nn.Parameter(torch.randn(1, 16 * 16, 1280), requires_grad=True)
+        self.patch_embeddings_32 = nn.Parameter(torch.randn(1, 32 * 32, 640), requires_grad=True)
+        self.patch_embeddings_64 = nn.Parameter(torch.randn(1, 64 * 64, 320), requires_grad=True)
+
+    def forward(self, x16_out, x32_out, x64_out):
+
+        import einops
+
+        # [1] x_16_out preparing
+        x16 = einops.rearrange(x16_out, 'b c h w -> b (h w) c')  # B,H*W,C
+        b_size = x16.shape[0]
+        x16_pe = self.patch_embeddings_16.expand(b_size, -1, -1).to(x16.device)
+        x16_out = einops.rearrange(((x16 + x16_pe).view(b_size, 16, 16, -1)), 'b h w c -> b c h w')
+
+        # [2] x_32_out preparing
+        x32 = einops.rearrange(x32_out, 'b c h w -> b (h w) c')  # B,H*W,C
+        x32_pe = self.patch_embeddings_32.expand(b_size, -1, -1).to(x32.device)
+        x32_out = einops.rearrange(((x32 + x32_pe).view(b_size, 32, 32, -1)), 'b h w c -> b c h w')
+
+        # [3] x_64_out preparing
+        x64 = einops.rearrange(x64_out, 'b c h w -> b (h w) c')  # B,H*W,C
+        x64_pe = self.patch_embeddings_64.expand(b_size, -1, -1).to(x64.device)
+        x64_out = einops.rearrange(((x64 + x64_pe).view(b_size, 64, 64, -1)), 'b h w c -> b c h w')
+
+        x = self.up1(x16_out,x32_out)  # 1,640,32,32 -> 640*32
+        x = self.up2(x, x64_out)    # 1,320,64,64
+        x3_out = self.up3(x)        # 1,160,128,128
+        x_in = x3_out
+        if self.mask_res == 256 :
+            x4_out = self.up4(x3_out)
+            x_in = x4_out
+        logits = self.outc(x_in)  # 1,4, 128,128
+        return logits
+
+"""
+x16_out = torch.randn(1, 1280, 16, 16)
+x32_out = torch.randn(1, 640, 32, 32)
+x64_out = torch.randn(1, 320, 64, 64)
+model = Segmentation_Head_a_position_embedding(n_classes=3,
+                                                  bilinear=False,
+                                                  mask_res=128,
+                                                  norm_type='instance_norm',
+                                                  use_nonlinearity=False)
+model(x16_out, x32_out, x64_out)
+"""
