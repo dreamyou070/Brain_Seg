@@ -187,7 +187,7 @@ def main(args):
                 binary_gt_flat = torch.where(gt_flat != 0, 1, 0).squeeze()                   # 256*256
                 binary_gt_flat = torch.nn.functional.one_hot(binary_gt_flat.to(torch.int64), num_classes=2)
                 binary_loss = bce_loss(binary_pred_,
-                                       binary_gt_flat.long())
+                                       binary_gt_flat)
                 loss_dict['binary_loss'] = binary_loss.item()
                 loss += binary_loss
 
