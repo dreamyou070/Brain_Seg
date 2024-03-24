@@ -202,13 +202,14 @@ def main(args):
                 class_num = masks_pred_permute.shape[-1]
                 normal_position = gt[:,0]
                 for class_idx in range(class_num):
-                    pred_attn_vector = masks_pred_permute[:, class_idx].squeeze()  # 128*128
-                    activation_position = gt[:, class_idx]  # 128*128
-                    deactivation_position = 1 - (normal_position + activation_position)
-                    total_attn = torch.ones_like(pred_attn_vector)
-                    activation_loss = (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
-                    deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
-                    loss += activation_loss + deactivation_loss
+                    if class_idx != 0 :
+                        pred_attn_vector = masks_pred_permute[:, class_idx].squeeze()  # 128*128
+                        activation_position = gt[:, class_idx]  # 128*128
+                        deactivation_position = 1 - activation_position
+                        total_attn = torch.ones_like(pred_attn_vector)
+                        activation_loss = (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
+                        deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
+                        loss += activation_loss + deactivation_loss
 
             if args.do_penalty_loss :
                 penalty_loss = deactivating_loss(input = masks_pred, target = gt_flat, ignore_idx=0)
