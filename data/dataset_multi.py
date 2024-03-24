@@ -8,12 +8,8 @@ from torchvision import transforms
 import cv2
 from tensorflow.keras.utils import to_categorical
 
-anomal_p = 0.03
-
-
 def passing_mvtec_argument(args):
     global argument
-
     argument = args
 
 

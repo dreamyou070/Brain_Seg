@@ -7,9 +7,8 @@ import os
 from attention_store import AttentionStore
 from data import call_dataset
 from model import call_model_package
-from model.segmentation_unet import Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c, \
-    Segmentation_Head_a_with_binary, Segmentation_Head_b_with_binary, Segmentation_Head_c_with_binary, VisionTransformer
-
+from model.segmentation_unet import (Segmentation_Head_a, Segmentation_Head_b, Segmentation_Head_c, \
+    Segmentation_Head_a_with_binary, Segmentation_Head_b_with_binary, Segmentation_Head_c_with_binary)
 from model.diffusion_model import transform_models_if_DDP
 from model.unet import unet_passing_argument
 from utils import prepare_dtype, arg_as_list, reshape_batch_dim_to_heads
@@ -20,7 +19,6 @@ from utils.saving import save_model
 from utils.loss import MulticlassLoss
 from utils.evaluate import evaluation_check
 from torch.nn import functional as F
-from ignite.metrics.confusion_matrix import ConfusionMatrix
 from utils.loss import deactivating_loss
 from ignite.engine import *
 from ignite.metrics import *
@@ -54,41 +52,23 @@ def main(args):
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
 
     if args.segment_with_binary :
-        segmentation_head = Segmentation_Head_a_with_binary(n_classes=args.n_classes,
-                                                            use_batchnorm=args.use_batchnorm,
-                                                            mask_res=args.mask_res,
-                                                            norm_type=args.norm_type,
-                                                            use_nonlinearity=args.use_nonlinearity,
-                                                            nonlinearity_type=args.nonlinearity_type)
+        model_class = Segmentation_Head_a_with_binary
         if args.aggregation_model_b:
-            segmentation_head = Segmentation_Head_b_with_binary(n_classes=args.n_classes,
-                                                                use_batchnorm=args.use_batchnorm,
-                                                                mask_res=args.mask_res,
-                                                                use_nonlinearity=args.use_nonlinearity)
+            model_class = Segmentation_Head_b_with_binary
         if args.aggregation_model_c:
-            segmentation_head = Segmentation_Head_c_with_binary(n_classes=args.n_classes,
-                                                                use_batchnorm=args.use_batchnorm,
-                                                                mask_res=args.mask_res,
-                                                                use_nonlinearity=args.use_nonlinearity)
+            model_class = Segmentation_Head_c_with_binary
     else :
-        segmentation_head = Segmentation_Head_a(n_classes=args.n_classes,
-                                                mask_res = args.mask_res,
-                                                norm_type=args.norm_type,
-                                                use_nonlinearity=args.use_nonlinearity)
+        model_class = Segmentation_Head_a
         if args.aggregation_model_b :
-            segmentation_head = Segmentation_Head_b(n_classes=args.n_classes,
-                                                    use_batchnorm=args.use_batchnorm,
-                                                    mask_res = args.mask_res,
-                                                    use_nonlinearity=args.use_nonlinearity)
+            model_class = Segmentation_Head_b
         if args.aggregation_model_c :
-            segmentation_head = Segmentation_Head_c(n_classes=args.n_classes,
-                                                    use_batchnorm=args.use_batchnorm,
-                                                    mask_res = args.mask_res,
-                                                    use_nonlinearity=args.use_nonlinearity)
-        if args.segment_with_transformer :
-            segmentation_head = VisionTransformer(use_nonlinearity=args.use_nonlinearity,
-                                                  mask_res=args.mask_res,
-                                                  n_classes=args.n_classes)
+            model_class = Segmentation_Head_c
+    segmentation_head = model_class(n_classes=args.n_classes,
+                                    mask_res=args.mask_res,
+                                    norm_type=args.norm_type,
+                                    use_nonlinearity=args.use_nonlinearity,
+                                    nonlinear_type=args.nonlinearity_type,)
+
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
@@ -174,13 +154,9 @@ def main(args):
                 res = int(query.shape[1] ** 0.5)
                 q_dict[f"{position}_{res}"] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict['up_16'], q_dict['up_32'], q_dict['up_64']
-            #x64_out_down = q_dict['down_64']
-
             # [2] segmentation head
             if args.segment_with_binary :
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
-            #elif args.segment_with_down_feature :
-            #    masks_pred = segmentation_head(x16_out, x32_out, x64_out, x64_out_down)  # 1,4,128,128
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous()              # 1,128,128,4
@@ -212,7 +188,6 @@ def main(args):
                             #loss += deactivation_loss
 
             if args.do_attn_loss_anomaly :
-
                 gt = gt.permute(0, 2, 3, 1).contiguous()  # 1,256,256,4
                 gt = gt.view(-1, gt.shape[-1])              # 128*128,4
                 masks_pred_permute = masks_pred.permute(0, 2, 3, 1).contiguous()  # 1,res,res,4
