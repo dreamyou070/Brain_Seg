@@ -169,12 +169,6 @@ def main(args):
 
             if args.segment_with_binary :
                 # here problem #
-                print(f'x16_out = {x16_out.shape}')
-                print(f'x32_out = {x32_out.shape}')
-                print(f'x64_out = {x64_out.shape}')
-                print(f'segmentation_head = {segmentation_head}')
-                print(f'segmentation_head = {segmentation_head.__class__.__name__}')
-
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
@@ -190,10 +184,10 @@ def main(args):
             if args.segment_with_binary :
                 binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()               # 1,256,256,2
                 binary_pred_ = binary_pred_.view(-1, binary_pred_.shape[-1]).contiguous() # 256*256, 2
-                binary_gt_flat = torch.where(gt_flat != 0, 1, 0).long().squeeze()                   # 256*256
+                binary_gt_flat = torch.where(gt_flat != 0, 1, 0).squeeze()                   # 256*256
                 binary_gt_flat = torch.nn.functional.one_hot(binary_gt_flat.to(torch.int64), num_classes=2)
                 binary_loss = bce_loss(binary_pred_,
-                                       binary_gt_flat)
+                                       binary_gt_flat.long())
                 loss_dict['binary_loss'] = binary_loss.item()
                 loss += binary_loss
 
