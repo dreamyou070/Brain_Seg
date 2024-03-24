@@ -374,6 +374,7 @@ if __name__ == "__main__":
     parser.add_argument("--with_4_layers", action='store_true')
     parser.add_argument("--use_batchnorm", action='store_true')
     parser.add_argument("--use_nonlinearity", action='store_true')
+    parser.add_argument("--do_attn_loss", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
     # step 5. optimizer
     parser.add_argument("--optimizer_type", type=str, default="AdamW",
