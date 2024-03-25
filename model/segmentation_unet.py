@@ -152,30 +152,30 @@ class Segmentation_Head_a_with_binary(nn.Module):
 
     def __init__(self,
                  n_classes,
-                 use_batchnorm=True,
                  mask_res = 128,
+                 norm_type = 'layer_norm',
                  use_nonlinearity = False,
                  nonlinear_type = 'relu'):
         super(Segmentation_Head_a_with_binary, self).__init__()
 
         self.n_classes = n_classes
         self.mask_res = mask_res
-        self.up1 = Up(1280, 640, 640, use_batchnorm, nonlinear_type)
-        self.up2 = Up(640, 320, 320, use_batchnorm, nonlinear_type)
-        self.up3 = UpSingle(in_channels = 320,
-                           out_channels = 160,
-                           res = 128,
-                           kernel_size=2,
-                           use_nonlinearity = use_nonlinearity,
-                           nonlinear_type = nonlinear_type)
+        self.up1 = Up(1280, 640, 640, norm_type, use_nonlinearity)
+        self.up2 = Up(640, 320, 320, norm_type, use_nonlinearity)
+        self.up3 = UpSingle(in_channels=320,
+                            out_channels=160,
+                            kernel_size=2,
+                            res=128,
+                            use_nonlinearity=use_nonlinearity,
+                            nonlinear_type=nonlinear_type)  # 64 -> 128 , channel 320 -> 160
         global_res = 128
-        if self.mask_res == 256 :
-            self.up4 = UpSingle(in_channels = 160,
-                               out_channels = 160,
-                               res = 256,
-                               kernel_size=2,
-                               use_nonlinearity = use_nonlinearity,
-                               nonlinear_type = nonlinear_type)
+        if self.mask_res == 256:
+            self.up4 = UpSingle(in_channels=160,
+                                out_channels=160,
+                                kernel_size=2,
+                                res=256,
+                                use_nonlinearity=use_nonlinearity,
+                                nonlinear_type=nonlinear_type)  # 128 -> 256
             global_res = 256
         self.binary_up = UpSingle(in_channels=160,
                                  out_channels=80,
@@ -211,16 +211,19 @@ class Segmentation_Head_a_with_binary(nn.Module):
 
 class Segmentation_Head_b(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128, use_nonlinearity = False,
-                 nonlinear_type = 'relu'):
+    def __init__(self,
+                 n_classes,
+                 mask_res = 128,
+                 norm_type='layer_norm',
+                 use_nonlinearity=False,
+                 nonlinear_type='relu'):
         super(Segmentation_Head_b, self).__init__()
 
         self.n_classes = n_classes
         self.mask_res = mask_res
-        self.bilinear = bilinear
-        self.up1 = Up(1280, 640, 640, use_batchnorm, nonlinear_type)
-        self.up2 = Up(640, 320, 320, use_batchnorm, nonlinear_type)
-        self.up3 = Up(640, 320, 320, bilinear, use_batchnorm)
+        self.up1 = Up(1280, 640, 640, norm_type, use_nonlinearity)
+        self.up2 = Up(640, 320, 320, norm_type, use_nonlinearity)
+        self.up3 = Up(640, 320, 320, norm_type, use_nonlinearity)
         self.up4 = UpSingle(in_channels = 320,
                              out_channels=160,
                              kernel_size=2,
@@ -251,30 +254,33 @@ class Segmentation_Head_b(nn.Module):
 
 class Segmentation_Head_b_with_binary(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128, use_nonlinearity = False,
-                 nonlinear_type = 'relu'):
+    def __init__(self,
+                 n_classes,
+                 mask_res = 128,
+                 norm_type='layer_norm',
+                 use_nonlinearity=False,
+                 nonlinear_type='relu'):
         super(Segmentation_Head_b_with_binary, self).__init__()
 
         self.n_classes = n_classes
         self.mask_res = mask_res
-        self.bilinear = bilinear
-        self.up1 = Up(1280, 640, 640, use_batchnorm, nonlinear_type)
-        self.up2 = Up(640, 320, 320, use_batchnorm, nonlinear_type)
-        self.up3 = Up(640, 320, 320, use_batchnorm, nonlinear_type)
-        self.up4 = UpSingle(in_channels = 320,
+        self.up1 = Up(1280, 640, 640, norm_type, use_nonlinearity)
+        self.up2 = Up(640, 320, 320, norm_type, use_nonlinearity)
+        self.up3 = Up(640, 320, 320, norm_type, use_nonlinearity)
+        self.up4 = UpSingle(in_channels=320,
                             out_channels=160,
                             kernel_size=2,
-                            res = 128,
-                            use_nonlinearity = use_nonlinearity,
-                            nonlinear_type = nonlinear_type)
+                            res=128,
+                            use_nonlinearity=use_nonlinearity,
+                            nonlinear_type=nonlinear_type)
         global_res = 128
-        if self.mask_res == 256 :
-            self.up5 = UpSingle(in_channels = 160,
-                                out_channels = 160,
+        if self.mask_res == 256:
+            self.up5 = UpSingle(in_channels=160,
+                                out_channels=160,
                                 kernel_size=2,
-                                res = 256,
-                                use_nonlinearity = use_nonlinearity,
-                                nonlinear_type = nonlinear_type)
+                                res=256,
+                                use_nonlinearity=use_nonlinearity,
+                                nonlinear_type=nonlinear_type)
             global_res = 256
         self.binary_up = UpSingle(in_channels=160,
                                  out_channels=160,
@@ -309,18 +315,23 @@ class Segmentation_Head_b_with_binary(nn.Module):
         return binary_logits, segment_logits
 
 
+
+
 class Segmentation_Head_c(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128, use_nonlinearity = False,
-                 nonlinear_type = 'relu'):
+    def __init__(self,
+                 n_classes,
+                 mask_res=128,
+                 norm_type='layer_norm',
+                 use_nonlinearity=False,
+                 nonlinear_type='relu'):
         super(Segmentation_Head_c, self).__init__()
 
         self.n_classes = n_classes
         self.mask_res = mask_res
-        self.bilinear = bilinear
-        self.up1 = Up(1280, 640, 640, use_batchnorm, nonlinear_type)
-        self.up2 = Up(640, 320, 320, use_batchnorm, nonlinear_type)
-        self.up3 = Up(640, 320, 320, use_batchnorm, nonlinear_type)
+        self.up1 = Up(1280, 640, 640, norm_type, use_nonlinearity)
+        self.up2 = Up(640, 320, 320, norm_type, use_nonlinearity)
+        self.up3 = Up(640, 320, 320, norm_type, use_nonlinearity)
         self.up4 = UpSingle(in_channels = 640,
                             out_channels = 320,
                             kernel_size=2,
@@ -352,17 +363,16 @@ class Segmentation_Head_c(nn.Module):
 
 class Segmentation_Head_c_with_binary(nn.Module):
 
-    def __init__(self,  n_classes, bilinear=False, use_batchnorm=True, mask_res = 128, use_nonlinearity = False,
+    def __init__(self,  n_classes, mask_res = 128, use_nonlinearity = False,
+                    norm_type = 'layer_norm',
                  nonlinear_type = 'relu'):
         super(Segmentation_Head_c_with_binary, self).__init__()
 
         self.n_classes = n_classes
         self.mask_res = mask_res
-        self.bilinear = bilinear
-
-        self.up1 = Up(1280, 640, 640, use_batchnorm, nonlinear_type)
-        self.up2 = Up(640, 320, 320, use_batchnorm, nonlinear_type)
-        self.up3 = Up(640, 320, 320, use_batchnorm, nonlinear_type)
+        self.up1 = Up(1280, 640, 640, norm_type, use_nonlinearity)
+        self.up2 = Up(640, 320, 320, norm_type, use_nonlinearity)
+        self.up3 = Up(640, 320, 320, norm_type, use_nonlinearity)
         self.up4 = UpSingle(in_channels=640,
                             out_channels=320,
                             kernel_size=2,
