@@ -150,21 +150,6 @@ class Segmentation_Head_a(nn.Module):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class Segmentation_Head_a_with_binary(nn.Module):
 
     def __init__(self,

@@ -6,7 +6,7 @@ obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64_without_pe"
-file_name="1_segmentation_model_a_layer_norm_relu_crossentropy"
+file_name="2_segmentation_model_a_layer_norm_relu_crossentropy_focal_loss"
 # #--do_attn_loss
 # --use_position_embedder \
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
@@ -27,4 +27,5 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --norm_type "layer_norm" \
- --nonlinearity_type "relu"
+ --nonlinearity_type "relu" \
+ --do_focal_loss

@@ -22,6 +22,7 @@ from torch.nn import functional as F
 from utils.loss import deactivating_loss
 from ignite.engine import *
 from ignite.metrics import *
+
 def eval_step(engine, batch):
     return batch
 
@@ -87,7 +88,6 @@ def main(args):
                                     norm_type=args.norm_type,
                                     use_nonlinearity=args.use_nonlinearity,
                                     nonlinear_type=args.nonlinearity_type,)
-
 
     print(f'\n step 5. optimizer')
     args.max_train_steps = len(train_dataloader) * args.max_train_epochs
