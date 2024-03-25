@@ -1,14 +1,14 @@
 # !/bin/bash
 #
-port_number=58815
+port_number=58817
 category="medical"
 obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
-sub_folder="up_16_32_64"
-file_name="2_segmentation_model_b_with_binary_instance_norm_relu_crossentropy_focal_loss"
+sub_folder="up_16_32_64_without_pe"
+file_name="1_segmentation_model_a_layer_norm_relu_crossentropy"
 # #--do_attn_loss
-#
+# --use_position_embedder \
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
@@ -21,12 +21,10 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --n_classes 3 \
  --mask_res 256 \
  --start_epoch 0 --max_train_epochs 200 \
- --use_position_embedder \
  --train_unet --train_text_encoder \
  --pretrained_model_name_or_path ../../../pretrained_stable_diffusion/stable-diffusion-v1-5/v1-5-pruned.safetensors \
  --trg_layer_list "['up_blocks_1_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_2_attentions_2_transformer_blocks_0_attn2',
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
- --norm_type "instance_norm" \
- --nonlinearity_type "leaky_relu" \
- --do_binary --aggregation_model_b
+ --norm_type "layer_norm" \
+ --nonlinearity_type "relu"

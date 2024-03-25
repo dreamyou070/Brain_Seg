@@ -106,9 +106,14 @@ def main(args):
     loss_BCE = nn.BCELoss()
 
     print(f'\n step 8. model to device')
-    segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = \
-        accelerator.prepare(segmentation_head, unet, text_encoder, network, optimizer, train_dataloader,
-                            test_dataloader, lr_scheduler, position_embedder)
+    if args.use_position_embedder :
+        segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = \
+            accelerator.prepare(segmentation_head, unet, text_encoder, network, optimizer, train_dataloader,
+                                test_dataloader, lr_scheduler, position_embedder)
+    else :
+        segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler = \
+            accelerator.prepare(segmentation_head, unet, text_encoder, network, optimizer, train_dataloader,
+                                test_dataloader, lr_scheduler)
     text_encoders = transform_models_if_DDP([text_encoder])
     unet, network = transform_models_if_DDP([unet, network])
     if args.use_position_embedder:
@@ -158,7 +163,10 @@ def main(args):
             with torch.no_grad():
                 latents = vae.encode(image).latent_dist.sample() * args.vae_scale_factor
             with torch.set_grad_enabled(True):
-                unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
+                if args.use_position_embedder :
+                    unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list, noise_type=position_embedder)
+                else :
+                    unet(latents, 0, encoder_hidden_states, trg_layer_list=args.trg_layer_list)
             query_dict, key_dict = controller.query_dict, controller.key_dict
             controller.reset()
             q_dict = {}

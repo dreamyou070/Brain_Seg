@@ -148,6 +148,23 @@ class Segmentation_Head_a(nn.Module):
         logits = self.outc(x_in)  # 1,4, 128,128
         return logits
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class Segmentation_Head_a_with_binary(nn.Module):
 
     def __init__(self,
