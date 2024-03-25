@@ -11,7 +11,7 @@ class FocalLoss(nn.Module):
     '''
 
     def __init__(self, gamma=2, focal_loss = True):
-        super(MulticlassLoss, self).__init__()
+        super(FocalLoss, self).__init__()
         self.gamma = gamma
         self.focal_loss = focal_loss
 
