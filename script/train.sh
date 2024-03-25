@@ -6,9 +6,9 @@ obj_name="leader_polyp"
 benchmark="bkai-igh-neopolyp_sy"
 layer_name='layer_3'
 sub_folder="up_16_32_64"
-file_name="11_segmentation_model_a_layer_norm_leaky_relu_only_do_proposed_loss"
+file_name="1_segmentation_model_a_with_binary_layer_norm_relu_crossentropy_focal_loss"
 # #--do_attn_loss
-#--aggregation_model_b
+#--aggregation_model_b --aggregation_model_b
 accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
  --main_process_port $port_number ../train.py --log_with wandb \
  --output_dir "../../result/${category}/${obj_name}/${layer_name}/${sub_folder}/${file_name}" \
@@ -29,4 +29,4 @@ accelerate launch --config_file ../../../gpu_config/gpu_0_1_2_3_4_5_config \
                     'up_blocks_3_attentions_2_transformer_blocks_0_attn2',]" \
  --norm_type "layer_norm" \
  --nonlinearity_type "leaky_relu" \
- --do_proposed_loss
+ --do_binary

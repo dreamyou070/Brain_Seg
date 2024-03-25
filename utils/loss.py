@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch
 from torch import Tensor
 
-class MulticlassLoss(nn.Module):
+class FocalLoss(nn.Module):
 
     '''
     Multi-class Focal loss implementation

@@ -16,7 +16,7 @@ from utils.attention_control import passing_argument, register_attention_control
 from utils.accelerator_utils import prepare_accelerator
 from utils.optimizer import get_optimizer, get_scheduler_fix
 from utils.saving import save_model
-from utils.loss import MulticlassLoss
+from utils.loss import FocalLoss
 from utils.evaluate import evaluation_check
 from torch.nn import functional as F
 from utils.loss import deactivating_loss
@@ -70,7 +70,7 @@ def main(args):
     weight_dtype, save_dtype = prepare_dtype(args)
     text_encoder, vae, unet, network, position_embedder = call_model_package(args, weight_dtype, accelerator)
 
-    if args.segment_with_binary :
+    if args.do_binary :
         model_class = Segmentation_Head_a_with_binary
         if args.aggregation_model_b:
             model_class = Segmentation_Head_b_with_binary
@@ -101,14 +101,9 @@ def main(args):
     lr_scheduler = get_scheduler_fix(args, optimizer, accelerator.num_processes)
 
     print(f'\n step 7. loss function')
-    if args.use_focal_loss :
-        multiclass_criterion = MulticlassLoss(focal_loss=True)
-    elif args.cross_entropy_focal_loss_both :
-        multiclass_criterion = nn.CrossEntropyLoss()
-        multiclass_criterion_focal = MulticlassLoss(focal_loss=True)
-    else :
-        multiclass_criterion = nn.CrossEntropyLoss()
-    bce_loss = nn.BCELoss()
+    loss_CE = nn.CrossEntropyLoss()
+    loss_FC = FocalLoss()
+    loss_BCE = nn.BCELoss()
 
     print(f'\n step 8. model to device')
     segmentation_head, unet, text_encoder, network, optimizer, train_dataloader, test_dataloader, lr_scheduler, position_embedder = \
@@ -181,28 +176,32 @@ def main(args):
             masks_pred_ = masks_pred.permute(0, 2, 3, 1).contiguous()              # 1,128,128,4
             masks_pred_ = masks_pred_.view(-1, masks_pred_.shape[-1]).contiguous() # pix_nuum, class_num
 
-            # [5.1.1] Multiclassification Loss
-            if args.do_cross_entropy_loss:
-                loss = multiclass_criterion(masks_pred_,                       # pix_num, class_num
-                                            gt_flat.squeeze().to(torch.long))  # 128*128
-                loss_dict['multi_class_loss'] = loss.item()
+            # ------------------------------------------------------------------------------------------------------
+            # [5.1] Multiclassification Loss
+            loss = loss_CE(masks_pred_,gt_flat.squeeze().to(torch.long))  # 128*128
+            loss_dict['multi_class_loss'] = loss.item()
 
-            if args.cross_entropy_focal_loss_both:
-                """ focal loss """
-                loss_focal = multiclass_criterion_focal(masks_pred_, gt_flat.squeeze().to(torch.long))
+            # [5.2] Focal Loss
+            if args.do_focal_loss :
+                loss_focal = loss_FC(masks_pred_, gt_flat.squeeze().to(torch.long))
                 loss += loss_focal
                 loss_dict['focal_loss'] = loss_focal.item()
 
-            # [5.1.2] detail loss
-            if args.do_proposed_loss :
-                # this loss averaging all pixel num
-                act_loss, deact_loss = NLLLoss(masks_pred_, gt_flat.squeeze().to(torch.long))
-                proposed_loss = act_loss + deact_loss
-                if args.do_cross_entropy_loss:
-                    loss += proposed_loss
-                else :
-                    loss = proposed_loss
+            # [5.3] binary loss
+            if args.do_binary:
+                sigmoid = nn.Sigmoid()
+                binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()  # 1,256,256,2
+                binary_pred_ = binary_pred_.view(-1, binary_pred_.shape[-1]).contiguous()  # 256*256, 2
+                # later try to change 0,1 class number
+                binary_gt_flat = torch.where(gt_flat != 0, 1, 0).squeeze()  # 256*256
+                binary_gt_flat = torch.nn.functional.one_hot(binary_gt_flat.to(torch.int64), num_classes=2)
+                binary_loss = loss_BCE(sigmoid(binary_pred_), binary_gt_flat.to(weight_dtype))
+                loss_dict['binary_loss'] = binary_loss.item()
+                loss += binary_loss
 
+
+            """
+            # [5.4]
             if args.do_attn_loss:
                 if batch['sample_idx'] == 1 :
                     gt = gt.permute(0, 2, 3, 1).contiguous()  # 1,256,256,4
@@ -221,14 +220,6 @@ def main(args):
                             deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
                             loss += activation_loss + deactivation_loss
                             #loss += deactivation_loss
-
-
-
-
-
-
-
-
             if args.do_attn_loss_anomaly :
                 gt = gt.permute(0, 2, 3, 1).contiguous()  # 1,256,256,4
                 gt = gt.view(-1, gt.shape[-1])              # 128*128,4
@@ -246,40 +237,7 @@ def main(args):
                         activation_loss = (1 - ((pred_attn_vector * activation_position) / total_attn) ** 2).mean()
                         deactivation_loss = (((pred_attn_vector * deactivation_position) / total_attn) ** 2).mean()
                         loss += activation_loss + deactivation_loss
-
-            if args.do_penalty_loss :
-                penalty_loss = deactivating_loss(input = masks_pred, target = gt_flat, ignore_idx=0)
-                loss += penalty_loss
-
-            if args.segment_with_binary :
-                sigmoid = nn.Sigmoid()
-                binary_pred_ = binary_pred.permute(0, 2, 3, 1).contiguous()                  # 1,256,256,2
-                binary_pred_ = binary_pred_.view(-1, binary_pred_.shape[-1]).contiguous()    # 256*256, 2
-
-                # later try to change 0,1 class number
-                binary_gt_flat = torch.where(gt_flat != 0, 1, 0).squeeze()                   # 256*256
-                binary_gt_flat = torch.nn.functional.one_hot(binary_gt_flat.to(torch.int64), num_classes=2)
-                binary_loss = bce_loss(sigmoid(binary_pred_),
-                                       binary_gt_flat.to(weight_dtype))
-                loss_dict['binary_loss'] = binary_loss.item()
-                loss += binary_loss
-
-            if args.do_dice_loss :
-                # [5.1.2] Dice Loss
-                default_evaluator = Engine(eval_step)
-                cm = ConfusionMatrix(num_classes=args.n_classes)
-                metric = DiceCoefficient(cm, ignore_index=0)
-                metric.attach(default_evaluator, 'dice')
-
-                y_pred = torch.argmax(masks_pred, dim=1).flatten() # change to one_hot
-                y_pred = F.one_hot(y_pred, num_classes=args.n_classes)
-                dice_loss = 1 - default_evaluator.run([[y_pred,   # [256*256,3
-                                                        gt_flat.squeeze().long()]] # [256*256]
-                                                      ).metrics['dice']                  # pixel_num
-                dice_loss = dice_loss.mean()
-                loss += dice_loss
-                loss_dict['dice_loss'] = dice_loss.item()
-
+            """
             # [5.2] back prop
             loss = loss.to(weight_dtype)
             current_loss = loss.detach().item()
@@ -386,8 +344,6 @@ if __name__ == "__main__":
                         help="do not use fp16/bf16 VAE in mixed precision (use float VAE) / mixed precision", )
     parser.add_argument("--position_embedding_layer", type=str)
     parser.add_argument("--d_dim", default=320, type=int)
-
-
     # step 4. model
     parser.add_argument('--pretrained_model_name_or_path', type=str, default='facebook/diffusion-dalle')
     parser.add_argument("--clip_skip", type=int, default=None,
@@ -408,10 +364,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_position_embedder", action='store_true')
     parser.add_argument("--aggregation_model_b", action='store_true')
     parser.add_argument("--aggregation_model_c", action='store_true')
-    parser.add_argument("--aggregation_model_a_with_pe", action='store_true')
-    parser.add_argument("--segment_with_transformer", action='store_true')
     parser.add_argument("--nonlinearity_type", type=str, default="relu", choices=["relu", "gelu", "silu", "mish", "leaky_relu"], )
-    parser.add_argument("--segment_with_binary", action='store_true')
     parser.add_argument("--with_4_layers", action='store_true')
     parser.add_argument("--use_batchnorm", action='store_true')
     parser.add_argument("--use_nonlinearity", action='store_true')
@@ -456,12 +409,9 @@ if __name__ == "__main__":
     parser.add_argument("--do_penalty_loss", action='store_true')
     parser.add_argument("--norm_type", type = str)
     parser.add_argument("--saving_original_query", action='store_true')
-    parser.add_argument("--do_attn_loss_anomaly", action='store_true')
-    parser.add_argument("--do_proposed_loss", action='store_true')
     parser.add_argument("--do_cross_entropy_loss", action='store_true')
-
-
-
+    parser.add_argument("--do_focal_loss", action='store_true')
+    parser.add_argument("--do_binar", action='store_true')
     # [saving]
     parser.add_argument("--save_model_as", type=str, default="safetensors", choices=[None, "ckpt", "pt", "safetensors"],
                         help="format to save the model (default is .safetensors)", )
