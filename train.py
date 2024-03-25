@@ -366,7 +366,7 @@ if __name__ == "__main__":
     parser.add_argument("--aggregation_model_c", action='store_true')
     parser.add_argument("--nonlinearity_type", type=str, default="relu", choices=["relu", "gelu", "silu", "mish", "leaky_relu"], )
     parser.add_argument("--with_4_layers", action='store_true')
-    parser.add_argument("--use_batchnorm", action='store_true')
+    parser.add_argument("--do_binary", action='store_true')
     parser.add_argument("--use_nonlinearity", action='store_true')
     parser.add_argument("--do_attn_loss", action='store_true')
     parser.add_argument("--pretrained_segmentation_model", type=str)
