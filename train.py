@@ -169,7 +169,7 @@ def main(args):
                 q_dict[f"{position}_{res}"] = reshape_batch_dim_to_heads(query) # 1, res,res,dim
             x16_out, x32_out, x64_out = q_dict['up_16'], q_dict['up_32'], q_dict['up_64']
             # [2] segmentation head
-            if args.segment_with_binary :
+            if args.do_binary :
                 binary_pred, masks_pred = segmentation_head(x16_out, x32_out, x64_out) # 1,4,128,128
             else :
                 masks_pred = segmentation_head(x16_out, x32_out, x64_out)  # 1,4,128,128
